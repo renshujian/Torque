@@ -5,8 +5,22 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
+        Title="demo" Height="450" Width="800">
+    <Window.Resources>
+        <local:IpStringConverter x:Key="IpStringConverter"/>
+    </Window.Resources>
+    <DockPanel>
+        <StackPanel DockPanel.Dock="top" Orientation="Horizontal" Height="26">
+            <Label>IP</Label>
+            <TextBox VerticalContentAlignment="Center">
+                <Binding Path="IPAddress" Converter="{StaticResource IpStringConverter}"/>
+            </TextBox>
+            <Label>端口</Label>
+            <TextBox VerticalContentAlignment="Center" Text="{Binding Port}"/>
+            <Button Click="Connect">请求数据</Button>
+        </StackPanel>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto">
+            <ListBox ItemsSource="{Binding Logs}"/>
+        </ScrollViewer>
+    </DockPanel>
 </Window>
