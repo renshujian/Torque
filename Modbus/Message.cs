@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 
@@ -41,32 +42,42 @@ namespace Modbus
             return result;
         }
 
-        public static Message FromBytes(byte[] bytes, int start, int count)
+        public static Message FromBytes(ArraySegment<byte> bytes)
         {
-            if (count < 8)
+            if (bytes.Count < 8)
             {
                 throw new ProtocolViolationException("modbus消息长度要不少于8字节");
             }
-            var transactionId = BigEndianConverter.ToUInt16(new ArraySegment<byte>(bytes, start, 2));
-            var protocolId = BigEndianConverter.ToUInt16(new ArraySegment<byte>(bytes, start + 2, 2));
-            var length = BigEndianConverter.ToUInt16(new ArraySegment<byte>(bytes, start + 4, 2));
+            var transactionId = BigEndianConverter.ToUInt16(bytes.Slice(0, 2));
+            var protocolId = BigEndianConverter.ToUInt16(bytes.Slice(2, 2));
+            var length = BigEndianConverter.ToUInt16(bytes.Slice(4, 2));
             if (protocolId != PROTOCOL_ID)
             {
                 throw new ProtocolViolationException($"modbus消息协议标识要为{PROTOCOL_ID}");
             }
-            if (length != count - 6)
+            if (length != bytes.Count - 6)
             {
                 throw new ProtocolViolationException("modbus消息长度标识与收到的字节数不符");
             }
-            var data = new byte[count - 8];
-            Array.Copy(bytes, start + 8, data, 0, count - 8);
+            var list = (IList<byte>)bytes;
             return new Message
             {
                 TransactionId = transactionId,
-                UnitId = bytes[start + 6],
-                FunctionCode = bytes[start + 7],
-                Data = data
+                UnitId = list[6],
+                FunctionCode = list[7],
+                Data = bytes.Slice(8).ToArray()
             };
+        }
+
+        public static bool TryParseBytesLength(ArraySegment<byte> bytes, out int length)
+        {
+            if (bytes.Count < 6)
+            {
+                length = bytes.Count;
+                return false;
+            }
+            length = BigEndianConverter.ToUInt16(bytes.Slice(4, 2)) + 6;
+            return true;
         }
 
         public override string ToString() => string.Join(" ", ToBytes().Select(b => b.ToString("X2")));

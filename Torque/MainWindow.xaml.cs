@@ -19,7 +19,7 @@ namespace Torque
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IDisposable
     {
         MainWindowModel Model { get; set; } = new();
         ModbusClient? ModbusClient { get; set; }
@@ -28,25 +28,20 @@ namespace Torque
         {
             InitializeComponent();
             DataContext = Model;
+            ModbusClient = new(Model.IPAddress, Model.Port);
         }
 
-        void Connect(object sender, RoutedEventArgs e)
+        public void Dispose() => ModbusClient?.Dispose();
+
+        void Dispose(object sender, EventArgs e) => Dispose();
+
+        async void Connect(object sender, RoutedEventArgs e)
         {
-            using ModbusClient client = new();
-            Log("初始化客户端");
-            client.Connect(Model.IPAddress, Model.Port);
-            Log($"连接到{Model.IPAddress}:{Model.Port}");
-            Modbus.Message request = new()
-            {
-                FunctionCode = 3,
-                Data = new byte[4] { 2, 88, 0, 16 }
-            };
-            Log($"发送请求{request}");
-            var response = client.Send(request);
+            var response = await ModbusClient.RequestAsync(3, new byte[4] { 2, 88, 0, 16 });
             Log($"收到响应{response}");
-            var data = response.Data.AsSpan(1..);
+            var data = new ArraySegment<byte>(response.Data, 1, response.Data.Length - 1);
             var floats = new float[8];
-            for (int i = 0; i < data.Length; i += 4)
+            for (int i = 0; i < data.Count; i += 4)
             {
                 // 还不懂为什么两个寄存器高低位进行调换后才正确
                 floats[i/4] = BigEndianConverter.ToSingle(new byte[] { data[i+2], data[i+3], data[i], data[i+1] });
