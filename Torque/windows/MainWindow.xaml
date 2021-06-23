@@ -5,11 +5,38 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque"
         mc:Ignorable="d"
-        Title="demo" Height="450" Width="800">
+        Title="紧固工具校准" Height="450" Width="800">
     <Window.Resources>
         <local:IpStringConverter x:Key="IpStringConverter"/>
     </Window.Resources>
     <DockPanel>
+        <Grid DockPanel.Dock="Left">
+            <Grid.Resources>
+                <Style TargetType="Label">
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
+            </Grid.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Label Grid.ColumnSpan="2">工具信息</Label>
+            <Label Grid.Row="1">电批编码</Label>
+            <Label Grid.Row="1" Grid.Column="1">11202008060431</Label>
+            <Label Grid.Row="2">目标扭矩</Label>
+            <Label Grid.Row="2" Grid.Column="1">12NM</Label>
+            <Button Grid.Row="3">清除数据</Button>
+            <Button Grid.Row="3" Grid.Column="1">扭矩归零</Button>
+            <Label Grid.Row="4" Grid.ColumnSpan="2" Background="Green" Margin="5">PASS</Label>
+        </Grid>
         <StackPanel DockPanel.Dock="top" Orientation="Horizontal" Height="26">
             <Label>IP</Label>
             <TextBox VerticalContentAlignment="Center">
@@ -19,8 +46,18 @@
             <TextBox VerticalContentAlignment="Center" Text="{Binding Port}"/>
             <Button Click="Connect">请求数据</Button>
         </StackPanel>
-        <ScrollViewer HorizontalScrollBarVisibility="Auto">
-            <ListBox ItemsSource="{Binding Logs}"/>
-        </ScrollViewer>
+        <ListView>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="序号"/>
+                    <GridViewColumn Header="电批编码"/>
+                    <GridViewColumn Header="目标扭矩"/>
+                    <GridViewColumn Header="实测扭矩"/>
+                    <GridViewColumn Header="偏倚"/>
+                    <GridViewColumn Header="结果"/>
+                    <GridViewColumn Header="检测时间"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
     </DockPanel>
 </Window>
