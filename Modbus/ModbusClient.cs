@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -33,6 +34,21 @@ namespace Modbus
             cts.Dispose();
             Socket.Shutdown(SocketShutdown.Both);
             Socket.Dispose();
+        }
+
+        public Task<Message> ReadHoldingRegisters(ushort address, ushort count)
+        {
+            var b12 = BitConverter.GetBytes(address);
+            var b34 = BitConverter.GetBytes(count);
+            if (BitConverter.IsLittleEndian)
+            {
+                var data = new byte[] { b12[1], b12[0], b34[1], b34[0] };
+                return RequestAsync(FunctionCodes.READ_HOLDING_REGISTERS, data);
+            }
+            else
+            {
+                return RequestAsync(FunctionCodes.READ_HOLDING_REGISTERS, b12.Concat(b34).ToArray());
+            }
         }
 
         public async Task<Message> RequestAsync(byte functionCode, byte[] data)

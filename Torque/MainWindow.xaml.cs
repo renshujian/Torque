@@ -1,17 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Modbus;
 
 namespace Torque
@@ -24,29 +13,48 @@ namespace Torque
         MainWindowModel Model { get; set; } = new();
         ModbusClient? ModbusClient { get; set; }
 
+        const float a = (float)(10 - -10) / (float)(20000 - 4000);
+        float b;
+
         public MainWindow()
         {
             InitializeComponent();
             DataContext = Model;
-            ModbusClient = new(Model.IPAddress, Model.Port);
         }
 
         public void Dispose() => ModbusClient?.Dispose();
 
         void Dispose(object sender, EventArgs e) => Dispose();
 
-        async void Connect(object sender, RoutedEventArgs e)
+        void Connect(object sender, RoutedEventArgs e)
         {
-            var response = await ModbusClient.RequestAsync(3, new byte[4] { 2, 88, 0, 16 });
+            // TODO: 这一段代码在new ModbusClient出错时（比如无法建立连接）Task执行顺序会陷入混乱，只能重启应用
+            ModbusClient?.Dispose();
+            ModbusClient = new ModbusClient(Model.IPAddress, Model.Port);
+        }
+
+        async Task<float> Request()
+        {
+            var response = await ModbusClient.ReadHoldingRegisters(600, 2);
             Log($"收到响应{response}");
             var data = new ArraySegment<byte>(response.Data, 1, response.Data.Length - 1);
-            var floats = new float[8];
-            for (int i = 0; i < data.Count; i += 4)
-            {
-                // 还不懂为什么两个寄存器高低位进行调换后才正确
-                floats[i/4] = BigEndianConverter.ToSingle(new byte[] { data[i+2], data[i+3], data[i], data[i+1] });
-            }
-            Log($"数据字节转换为单精度浮点{string.Join(',', floats)}");
+            // 还不懂为什么两个寄存器高低位进行调换后才正确
+            return BigEndianConverter.ToSingle(new byte[] { data[2], data[3], data[0], data[1] });
+        }
+
+        async void Calibrate(object sender, RoutedEventArgs e)
+        {
+            var x = await Request();
+            Log($"扭矩0时电流为{x / 1000}mA");
+            b = -a * x;
+            Log($"扭矩 = 电流 * 1000 * {a} + {b}");
+        }
+
+        async void Request(object sender, RoutedEventArgs e)
+        {
+            var x = await Request();
+            var y = a * x + b;
+            Log($"电流为{x / 1000}mA，扭矩为{y}N*M");
         }
 
         void Log(string log) => Model.Logs.Add(log);

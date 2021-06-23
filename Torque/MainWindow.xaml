@@ -18,7 +18,9 @@
             </TextBox>
             <Label>端口</Label>
             <TextBox VerticalContentAlignment="Center" Text="{Binding Port}"/>
-            <Button Click="Connect">请求数据</Button>
+            <Button Click="Connect">建立连接</Button>
+            <Button Click="Calibrate">扭矩零点</Button>
+            <Button Click="Request">请求数据</Button>
         </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Auto">
             <ListBox ItemsSource="{Binding Logs}"/>
