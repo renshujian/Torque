@@ -22,12 +22,14 @@ namespace Torque
     {
         MainWindowModel Model { get; set; } = new();
         ITorqueService TorqueService { get; }
+        IMesService MesService { get; }
 
-        public MainWindow(ITorqueService torqueService)
+        public MainWindow(ITorqueService torqueService, IMesService mesService)
         {
             InitializeComponent();
             DataContext = Model;
             TorqueService = torqueService;
+            MesService = mesService;
         }
     }
 }

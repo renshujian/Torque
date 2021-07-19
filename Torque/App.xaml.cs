@@ -60,6 +60,8 @@ namespace Torque
             });
             services.AddSingleton(config.GetSection(nameof(TorqueServiceOptions)).Get<TorqueServiceOptions>());
             services.AddSingleton<ITorqueService, TorqueService>();
+            services.AddDbContext<MesDbContext>(o => o.UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11")));
+            services.AddScoped<IMesService, MesService>();
             services.AddTransient<Login>().AddTransient<MainWindow>();
             return services.BuildServiceProvider();
         }
