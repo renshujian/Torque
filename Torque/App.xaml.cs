@@ -16,8 +16,7 @@ namespace Torque
     {
         void ShowException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show(e.Exception.Message, "发生异常", MessageBoxButton.OK, MessageBoxImage.Error);
-            e.Handled = true;
+            MessageBox.Show(e.Exception.Message, e.Exception.ToString(), MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         async void AppStartup(object sender, StartupEventArgs e)
@@ -36,6 +35,7 @@ namespace Torque
             var main = sp.GetRequiredService<MainWindow>();
             if (login.ShowDialog() == true)
             {
+                main.Model.User = login.User!;
                 MainWindow = main;
                 MainWindow.Show();
             } else

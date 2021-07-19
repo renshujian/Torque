@@ -20,7 +20,7 @@ namespace Torque
     /// </summary>
     public partial class MainWindow : Window
     {
-        MainWindowModel Model { get; set; } = new();
+        internal MainWindowModel Model { get; } = new();
         ITorqueService TorqueService { get; }
         IMesService MesService { get; }
 

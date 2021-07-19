@@ -2,7 +2,7 @@
 {
     public class Tool
     {
-        public string Id { get; set; } = "";
-        public double SetTorque { get; set; }
+        public string Id { get; init; } = "";
+        public double SetTorque { get; init; }
     }
 }

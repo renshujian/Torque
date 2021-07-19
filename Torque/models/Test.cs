@@ -4,10 +4,11 @@ namespace Torque
 {
     public class Test
     {
-        public string ToolId { get; set; } = "";
-        public double SetTorque { get; set; }
-        public double RealTorque { get; set; }
-        public double Diviation { get; set; }
-        public DateTime TestTime { get; set; }
+        public string ToolId { get; init; } = "";
+        public double SetTorque { get; init; }
+        public double RealTorque { get; init; }
+        public double Diviation { get; init; }
+        public DateTime TestTime { get; init; }
+        public bool IsOK => Diviation is >= -0.2 and <= 0.2;
     }
 }

@@ -1,43 +1,39 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Net;
 using System.Runtime.CompilerServices;
 
 namespace Torque
 {
     class MainWindowModel : INotifyPropertyChanged
     {
-        public IPAddress IPAddress
+        User user = new("匿名用户");
+        public User User
         {
-            get => ip;
+            get => user;
             set
             {
-                ip = value;
+                user = value;
                 OnPropertyChanged();
             }
         }
 
-        public int Port
+        Tool tool = new();
+        public Tool Tool
         {
-            get => port;
+            get => tool;
             set
             {
-                port = value;
+                tool = value;
                 OnPropertyChanged();
             }
         }
 
-        public ObservableCollection<string> Logs { get; set; } = new();
+        public ObservableCollection<Test> Tests { get; } = new();
 
         public event PropertyChangedEventHandler? PropertyChanged;
-
         void OnPropertyChanged([CallerMemberName] string name = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
-
-        IPAddress ip = IPAddress.Loopback;
-        int port = 502;
     }
 }
