@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace Torque
 {
@@ -21,14 +22,15 @@ namespace Torque
 
         async void AppStartup(object sender, StartupEventArgs e)
         {
-            var root = ConfigureServices();
+            var config = new ConfigurationBuilder().AddIniFile("config.ini").Build();
+            var root = ConfigureServices(config);
 #if DEBUG
             using (var s = root.CreateScope())
             {
                 await SeedDb(s.ServiceProvider);
             }
 #endif
-            using var scope = root.CreateScope();
+            var scope = root.CreateScope();
             var sp = scope.ServiceProvider;
             var login = sp.GetRequiredService<Login>();
             var main = sp.GetRequiredService<MainWindow>();
@@ -42,7 +44,7 @@ namespace Torque
             }
         }
  
-        static ServiceProvider ConfigureServices()
+        static ServiceProvider ConfigureServices(IConfiguration config)
         {
             ServiceCollection services = new();
             services.AddDbContext<AppDbContext>(o => o.UseSqlite("DataSource=app.db;Cache=Shared"));
@@ -56,6 +58,8 @@ namespace Torque
                 o.Password.RequireUppercase = false;
                 o.Lockout.AllowedForNewUsers = false;
             });
+            services.AddSingleton(config.GetSection(nameof(TorqueServiceOptions)).Get<TorqueServiceOptions>());
+            services.AddSingleton<ITorqueService, TorqueService>();
             services.AddTransient<Login>().AddTransient<MainWindow>();
             return services.BuildServiceProvider();
         }

@@ -21,11 +21,13 @@ namespace Torque
     public partial class MainWindow : Window
     {
         MainWindowModel Model { get; set; } = new();
+        ITorqueService TorqueService { get; }
 
-        public MainWindow()
+        public MainWindow(ITorqueService torqueService)
         {
             InitializeComponent();
             DataContext = Model;
+            TorqueService = torqueService;
         }
     }
 }
