@@ -3,11 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Torque"
+        xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="450" Width="800">
+        Title="紧固工具校准" Height="450" Width="800"
+        InputMethod.IsInputMethodEnabled="False"
+        TextInput="Window_TextInput">
     <DockPanel>
-        <Grid DockPanel.Dock="Left">
+        <Grid DockPanel.Dock="Left" Width="300">
             <Grid.Resources>
                 <Style TargetType="Label">
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -27,9 +29,9 @@
             </Grid.RowDefinitions>
             <Label Grid.ColumnSpan="2">工具信息</Label>
             <Label Grid.Row="1">电批编码</Label>
-            <Label Grid.Row="1" Grid.Column="1">11202008060431</Label>
+            <Label Grid.Row="1" Grid.Column="1" Content="{Binding Tool.Id}"/>
             <Label Grid.Row="2">目标扭矩</Label>
-            <Label Grid.Row="2" Grid.Column="1">12NM</Label>
+            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}N*M"/>
             <Button Grid.Row="3">清除数据</Button>
             <Button Grid.Row="3" Grid.Column="1">扭矩归零</Button>
             <Label Grid.Row="4" Grid.ColumnSpan="2" Background="Green" Margin="5">PASS</Label>

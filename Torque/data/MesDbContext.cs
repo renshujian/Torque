@@ -18,6 +18,8 @@ namespace Torque
             tool.Property(t => t.Id).HasColumnName("screwdriver");
             tool.Property(t => t.SetTorque).HasColumnName("XYNJ").HasConversion<string>();
             tool.HasData(
+                new Tool { Id = "50mppmu1N0vovmnmmmmmqnnpmtmnmj1E0toml1E0gmmm", SetTorque = 50},
+                new Tool { Id = "90ehhem1G0nemefeeeeffmfhelefebxgmnYeee", SetTorque = 9},
                 new Tool { Id = "03308K9290100000411307010-B720/B*000", SetTorque = 720.8 },
                 new Tool { Id = "03308L9080100001181307010-C289*000", SetTorque = 289 },
                 new Tool { Id = "720289", SetTorque = 0.13});

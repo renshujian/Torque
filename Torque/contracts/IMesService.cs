@@ -5,7 +5,7 @@ namespace Torque
 {
     public interface IMesService : IDisposable
     {
-        Tool GetTool(string id);
+        Tool? GetTool(string id);
         void Upload(IList<Test> result);
     }
 }

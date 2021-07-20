@@ -17,8 +17,8 @@ namespace Torque
             }
         }
 
-        Tool tool = new();
-        public Tool Tool
+        Tool? tool;
+        public Tool? Tool
         {
             get => tool;
             set

@@ -17,9 +17,9 @@ namespace Torque
             db.Dispose();
         }
 
-        public Tool GetTool(string id)
+        public Tool? GetTool(string id)
         {
-            return db.Tools.Where(t => t.Id == id).First();
+            return db.Tools.Where(t => t.Id == id).FirstOrDefault();
         }
 
         public void Upload(IList<Test> result)
