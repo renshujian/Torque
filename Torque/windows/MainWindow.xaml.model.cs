@@ -29,6 +29,16 @@ namespace Torque
         }
 
         public ObservableCollection<Test> Tests { get; } = new();
+        Test? lastTest;
+        public Test? LastTest
+        {
+            get => lastTest;
+            set
+            {
+                lastTest = value;
+                OnPropertyChanged();
+            }
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         void OnPropertyChanged([CallerMemberName] string name = "")

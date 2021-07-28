@@ -4,11 +4,11 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-	<Nullable>enable</Nullable>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-	<None Include="config.ini" CopyToOutputDirectory="PreserveNewest" />	
+    <None Include="config.ini" CopyToOutputDirectory="PreserveNewest" />	
   </ItemGroup>
 
   <ItemGroup>

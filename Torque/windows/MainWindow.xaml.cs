@@ -1,18 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Torque
 {
@@ -45,6 +36,7 @@ namespace Torque
                 else
                 {
                     Model.Tool = tool;
+                    Dispatcher.Invoke(ClearTests);
                 }
             });
         }
@@ -53,6 +45,49 @@ namespace Torque
         {
             scaned.Append(e.Text);
             getToolDelayed.Change(300, Timeout.Infinite);
+        }
+
+        private async void ReadTorque(object sender, RoutedEventArgs e)
+        {
+            var torque = await TorqueService.ReadAsync();
+            var test = new Test
+            {
+                ToolId = Model.Tool!.Id,
+                SetTorque = Model.Tool.SetTorque,
+                RealTorque = torque,
+                Diviation = (torque - Model.Tool.SetTorque) / Model.Tool.SetTorque,
+                TestTime = DateTime.Now
+            };
+            Model.LastTest = test;
+            Model.Tests.Add(test);
+            if (!test.IsOK)
+            {
+                if (MessageBox.Show("数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    ClearTests();
+                    return;
+                }
+            }
+            if (Model.Tests.Count >= 12 && Model.Tests.All(t => t.IsOK))
+            {
+                if (MessageBox.Show("校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    MesService.Upload(Model.Tests);
+                    ClearTests();
+                }
+            }
+        }
+
+        private void ResetTorque(object sender, RoutedEventArgs e)
+        {
+            // torque.reset
+            ClearTests();
+        }
+
+        void ClearTests()
+        {
+            Model.LastTest = null;
+            Model.Tests.Clear();
         }
     }
 }
