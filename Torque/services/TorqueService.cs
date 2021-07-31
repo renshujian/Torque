@@ -67,7 +67,7 @@ namespace Torque
             modbusClient?.Dispose();
             modbusClient = null;
             Results.Sort((x, y) => y.CompareTo(x));
-            var result = Results.Take(Options.Sample).Average();
+            var result = Results.Take(Options.Sample).DefaultIfEmpty().Average();
             readingTCS?.SetResult(result);
             readingTCS = null;
         }

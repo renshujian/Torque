@@ -5,19 +5,29 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="450" Width="800"
+        Title="紧固工具校准" Height="450" Width="900"
         InputMethod.IsInputMethodEnabled="False"
         TextInput="Window_TextInput">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
+        <local:IndexConverter x:Key="IndexConverter"/>
     </Window.Resources>
-    <DockPanel>
+    <DockPanel Margin="10 0 0 5">
         <Grid DockPanel.Dock="Left" Width="300">
             <Grid.Resources>
                 <Style TargetType="Label">
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
                     <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="Background" Value="DeepSkyBlue"/>
+                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="BorderBrush" Value="Black"/>
+                    <Setter Property="BorderThickness" Value="0.7"/>
+                    <Setter Property="FontSize" Value="20"/>
+                </Style>
+                <Style TargetType="Button">
+                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="FontSize" Value="20"/>
                 </Style>
             </Grid.Resources>
             <Grid.ColumnDefinitions>
@@ -25,15 +35,17 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
-                <RowDefinition/>
-                <RowDefinition/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Label Grid.ColumnSpan="2">工具信息</Label>
             <Label Grid.Row="1">电批编码</Label>
-            <Label Grid.Row="1" Grid.Column="1" Content="{Binding Tool.Id}"/>
+            <Label Grid.Row="1" Grid.Column="1" FontSize="14">
+                <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
+            </Label>
             <Label Grid.Row="2">目标扭矩</Label>
             <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}N*M"/>
             <Button Name="ZeroButton" Grid.Row="3" Click="ResetTorque">扭矩零点</Button>
@@ -44,23 +56,28 @@
                 开始测量
             </Button>
             <Button Name="StopButton" Grid.Row="3" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Label Grid.Row="4" Grid.ColumnSpan="2" Margin="5">
+            <Label Grid.Row="4" Grid.ColumnSpan="2" FontSize="100">
                 <Label.Background>
                     <Binding Path="LastTest.IsOK" Converter="{StaticResource BoolColorConverter}"/>
                 </Label.Background>
                 <Binding Path="LastTest.IsPass"/>
             </Label>
+            <Button Grid.Row="4" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
         </Grid>
-        <ListView ItemsSource="{Binding Tests}">
+        <ListView ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="序号"/>
-                    <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}"/>
-                    <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}"/>
-                    <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}"/>
-                    <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}"/>
-                    <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}"/>
-                    <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}"/>
+                    <GridViewColumn Header="序号" Width="30">
+                        <GridViewColumn.DisplayMemberBinding>
+                            <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Converter="{StaticResource IndexConverter}"/>
+                        </GridViewColumn.DisplayMemberBinding>
+                    </GridViewColumn>
+                    <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                    <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="60"/>
+                    <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="60"/>
+                    <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
+                    <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
+                    <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>
                 </GridView>
             </ListView.View>
         </ListView>

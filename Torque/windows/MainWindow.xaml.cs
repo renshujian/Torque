@@ -97,5 +97,13 @@ namespace Torque
             ZeroButton.IsEnabled = true;
             TorqueService.StopRead();
         }
+
+        private void ClearTests(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show("要清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                Model.ClearTests();
+            }
+        }
     }
 }
