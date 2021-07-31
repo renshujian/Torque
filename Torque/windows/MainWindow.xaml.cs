@@ -130,5 +130,22 @@ namespace Torque
                 sp.GetRequiredService<UsersWindow>().Show();
             }
         }
+
+        private void InputTool(object sender, RoutedEventArgs e)
+        {
+            var dialog = new InputToolDialog();
+            if (dialog.ShowDialog() == true)
+            {
+                if (double.TryParse(dialog.setTorque.Text, out var setTorque))
+                {
+                    Model.Tool = new() { Id = dialog.id.Text, SetTorque = setTorque };
+                    Model.ClearTests();
+                }
+                else
+                {
+                    MessageBox.Show("扭矩无法解析成浮点数");
+                }
+            }
+        }
     }
 }

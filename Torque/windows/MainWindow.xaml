@@ -22,8 +22,8 @@
                 <MenuItem Header="用户..." Click="OpenUsersWindow"/>
             </MenuItem>
             <MenuItem Header="调试" IsEnabled="{Binding User.IsAdmin}">
-                <MenuItem Header="输入工具信息..."/>
-                <MenuItem Header="查看内部变量..."/>
+                <MenuItem Header="输入工具信息..." Click="InputTool"/>
+                <MenuItem Header="查看内部变量..." IsEnabled="False"/>
             </MenuItem>
         </Menu>
         <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 0">
