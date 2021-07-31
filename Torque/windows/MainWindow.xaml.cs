@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
 {
@@ -18,14 +19,16 @@ namespace Torque
         AppDbContext AppDbContext { get; }
         StringBuilder scaned = new();
         Timer getToolDelayed;
+        IServiceProvider sp;
 
-        public MainWindow(ITorqueService torqueService, IMesService mesService, AppDbContext appDbContext)
+        public MainWindow(ITorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
             TorqueService = torqueService;
             MesService = mesService;
             AppDbContext = appDbContext;
+            sp = serviceProvider;
             getToolDelayed = new(_ =>
             {
                 var id = scaned.ToString();
@@ -107,6 +110,15 @@ namespace Torque
             if (MessageBox.Show("要清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
                 Model.ClearTests();
+            }
+        }
+
+        private void OpenTestsViewer(object sender, RoutedEventArgs e)
+        {
+            var windows = App.Current.Windows.OfType<Window>();
+            if (!windows.Any(w => w is TestsViewer))
+            {
+                sp.GetRequiredService<TestsViewer>().Show();
             }
         }
     }

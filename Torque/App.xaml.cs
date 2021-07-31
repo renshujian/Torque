@@ -29,9 +29,19 @@ namespace Torque
             var main = sp.GetRequiredService<MainWindow>();
             if (login.ShowDialog() == true)
             {
-                main.Model.User = login.User!;
-                MainWindow = main;
-                MainWindow.Show();
+                if (login.User!.IsInRole("查看"))
+                {
+                    MainWindow = sp.GetRequiredService<TestsViewer>();
+                    MainWindow.Show();
+                    // App默认在关闭所有窗口时退出，所以关闭Login前需要先实例化MainWindow以防退出，这里又要关闭main以防不退出
+                    main.Close();
+                }
+                else
+                {
+                    main.Model.User = login.User;
+                    MainWindow = main;
+                    MainWindow.Show();
+                }
             } else
             {
                 Shutdown();
@@ -56,7 +66,7 @@ namespace Torque
             services.AddSingleton<ITorqueService, TorqueService>();
             services.AddDbContext<MesDbContext>(o => o.UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11")));
             services.AddScoped<IMesService, MesService>();
-            services.AddTransient<Login>().AddTransient<MainWindow>();
+            services.AddTransient<Login>().AddTransient<MainWindow>().AddTransient<TestsViewer>();
             return services.BuildServiceProvider();
         }
     }

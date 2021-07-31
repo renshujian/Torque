@@ -15,6 +15,7 @@ namespace Torque
         {
             InitializeComponent();
             UserManager = userManager;
+            usernameBox.Focus();
         }
 
         async void Submit(object sender, RoutedEventArgs e)

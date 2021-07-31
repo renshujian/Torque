@@ -1,0 +1,21 @@
+﻿<Window x:Class="Torque.TestsViewer"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Torque"
+        mc:Ignorable="d"
+        Title="本地历史数据" Height="450" Width="800">
+    <ListView Name="listView">
+        <ListView.View>
+            <GridView>
+                <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="60"/>
+                <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="60"/>
+                <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
+                <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
+                <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>
+            </GridView>
+        </ListView.View>
+    </ListView>
+</Window>
