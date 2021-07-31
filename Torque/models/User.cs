@@ -6,5 +6,6 @@ namespace Torque
     {
         public User(string userName) : base(userName) { }
         public bool IsInRole(string role) => role == UserName;
+        public bool IsAdmin => IsInRole("管理员");
     }
 }

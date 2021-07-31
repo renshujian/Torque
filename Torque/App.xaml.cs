@@ -52,7 +52,7 @@ namespace Torque
         {
             ServiceCollection services = new();
             services.AddDbContext<AppDbContext>(o => o.UseSqlite("DataSource=app.db;Cache=Shared"));
-            services.AddIdentityCore<User>().AddEntityFrameworkStores<AppDbContext>();
+            services.AddIdentityCore<User>().AddEntityFrameworkStores<AppDbContext>().AddTokenProvider<FakeTokenProvider>(TokenOptions.DefaultProvider);
             services.Configure<IdentityOptions>(o =>
             {
                 o.User.AllowedUserNameCharacters = "";
@@ -66,7 +66,7 @@ namespace Torque
             services.AddSingleton<ITorqueService, TorqueService>();
             services.AddDbContext<MesDbContext>(o => o.UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11")));
             services.AddScoped<IMesService, MesService>();
-            services.AddTransient<Login>().AddTransient<MainWindow>().AddTransient<TestsViewer>();
+            services.AddTransient<Login>().AddTransient<MainWindow>().AddTransient<TestsViewer>().AddTransient<UsersWindow>();
             return services.BuildServiceProvider();
         }
     }

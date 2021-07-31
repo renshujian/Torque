@@ -18,8 +18,13 @@
             <MenuItem Header="查看">
                 <MenuItem Header="历史数据..." Click="OpenTestsViewer"/>
             </MenuItem>
-            <MenuItem Header="管理"></MenuItem>
-            <MenuItem Header="调试"></MenuItem>
+            <MenuItem Header="管理" IsEnabled="{Binding User.IsAdmin}">
+                <MenuItem Header="用户..." Click="OpenUsersWindow"/>
+            </MenuItem>
+            <MenuItem Header="调试" IsEnabled="{Binding User.IsAdmin}">
+                <MenuItem Header="输入工具信息..."/>
+                <MenuItem Header="查看内部变量..."/>
+            </MenuItem>
         </Menu>
         <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 0">
             <Grid.Resources>

@@ -121,5 +121,14 @@ namespace Torque
                 sp.GetRequiredService<TestsViewer>().Show();
             }
         }
+
+        private void OpenUsersWindow(object sender, RoutedEventArgs e)
+        {
+            var windows = App.Current.Windows.OfType<Window>();
+            if (!windows.Any(w => w is UsersWindow))
+            {
+                sp.GetRequiredService<UsersWindow>().Show();
+            }
+        }
     }
 }
