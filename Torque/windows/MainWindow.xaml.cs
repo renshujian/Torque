@@ -15,15 +15,17 @@ namespace Torque
         internal MainWindowModel Model { get; } = new();
         ITorqueService TorqueService { get; }
         IMesService MesService { get; }
+        AppDbContext AppDbContext { get; }
         StringBuilder scaned = new();
         Timer getToolDelayed;
 
-        public MainWindow(ITorqueService torqueService, IMesService mesService)
+        public MainWindow(ITorqueService torqueService, IMesService mesService, AppDbContext appDbContext)
         {
             InitializeComponent();
             DataContext = Model;
             TorqueService = torqueService;
             MesService = mesService;
+            AppDbContext = appDbContext;
             getToolDelayed = new(_ =>
             {
                 var id = scaned.ToString();
@@ -33,7 +35,7 @@ namespace Torque
                 {
                     Dispatcher.Invoke(() => MessageBox.Show($"没找到电批{id}"));
                 }
-                else
+                else if (tool != Model.Tool)
                 {
                     Model.Tool = tool;
                     Dispatcher.Invoke(Model.ClearTests);
@@ -85,6 +87,8 @@ namespace Torque
             {
                 if (MessageBox.Show("校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
+                    AppDbContext.Tests.AddRange(Model.Tests);
+                    AppDbContext.SaveChanges();
                     MesService.Upload(Model.Tests);
                     Model.ClearTests();
                 }

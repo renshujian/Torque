@@ -19,16 +19,10 @@ namespace Torque
             MessageBox.Show(e.Exception.Message, e.Exception.ToString(), MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
-        async void AppStartup(object sender, StartupEventArgs e)
+        void AppStartup(object sender, StartupEventArgs e)
         {
             var config = new ConfigurationBuilder().AddIniFile("config.ini").Build();
             var root = ConfigureServices(config);
-#if DEBUG
-            using (var s = root.CreateScope())
-            {
-                await SeedDb(s.ServiceProvider);
-            }
-#endif
             var scope = root.CreateScope();
             var sp = scope.ServiceProvider;
             var login = sp.GetRequiredService<Login>();
@@ -64,17 +58,6 @@ namespace Torque
             services.AddScoped<IMesService, MesService>();
             services.AddTransient<Login>().AddTransient<MainWindow>();
             return services.BuildServiceProvider();
-        }
-
-        static async Task SeedDb(IServiceProvider sp)
-        {
-            var db = sp.GetRequiredService<AppDbContext>();
-            db.Database.EnsureDeleted();
-            db.Database.EnsureCreated();
-            var userManager = sp.GetRequiredService<UserManager<User>>();
-            await userManager.CreateAsync(new("查看"), "chakan");
-            await userManager.CreateAsync(new("操作员"), "caozuoyuan");
-            await userManager.CreateAsync(new("管理员"), "guanliyuan");
         }
     }
 }

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Include="config.ini" CopyToOutputDirectory="PreserveNewest" />	
+    <None Include="app.db" CopyToOutputDirectory="PreserveNewest" />	
   </ItemGroup>
 
   <ItemGroup>
