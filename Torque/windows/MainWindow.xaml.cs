@@ -36,7 +36,7 @@ namespace Torque
                 else
                 {
                     Model.Tool = tool;
-                    Dispatcher.Invoke(ClearTests);
+                    Dispatcher.Invoke(Model.ClearTests);
                 }
             });
         }
@@ -47,8 +47,21 @@ namespace Torque
             getToolDelayed.Change(300, Timeout.Infinite);
         }
 
+        private async void ResetTorque(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show("要标定扭矩传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                ZeroButton.IsEnabled = false;
+                await TorqueService.Zero();
+                Model.ClearTests();
+                ZeroButton.IsEnabled = true;
+            }
+        }
+
         private async void ReadTorque(object sender, RoutedEventArgs e)
         {
+            StopButton.Visibility = Visibility.Visible;
+            ZeroButton.IsEnabled = false;
             var torque = await TorqueService.ReadAsync();
             var test = new Test
             {
@@ -64,7 +77,7 @@ namespace Torque
             {
                 if (MessageBox.Show("数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
-                    ClearTests();
+                    Model.ClearTests();
                     return;
                 }
             }
@@ -73,21 +86,16 @@ namespace Torque
                 if (MessageBox.Show("校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
                     MesService.Upload(Model.Tests);
-                    ClearTests();
+                    Model.ClearTests();
                 }
             }
         }
 
-        private void ResetTorque(object sender, RoutedEventArgs e)
+        private void StopButton_Click(object sender, RoutedEventArgs e)
         {
-            // torque.reset
-            ClearTests();
-        }
-
-        void ClearTests()
-        {
-            Model.LastTest = null;
-            Model.Tests.Clear();
+            StopButton.Visibility = Visibility.Hidden;
+            ZeroButton.IsEnabled = true;
+            TorqueService.StopRead();
         }
     }
 }

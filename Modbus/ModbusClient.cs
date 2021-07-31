@@ -118,7 +118,7 @@ namespace Modbus
                 {
                     buffer.Commit(received);
                     int length;
-                    if (Message.TryParseBytesLength(buffer.ActiveSegment, out length))
+                    while (Message.TryParseBytesLength(buffer.ActiveSegment, out length))
                     {
                         var message = Message.FromBytes(buffer.ActiveSegment.Slice(0, length));
                         buffer.Discard(length);

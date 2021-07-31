@@ -40,6 +40,12 @@ namespace Torque
             }
         }
 
+        public void ClearTests()
+        {
+            LastTest = null;
+            Tests.Clear();
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         void OnPropertyChanged([CallerMemberName] string name = "")
         {
