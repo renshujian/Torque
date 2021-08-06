@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Oracle.ManagedDataAccess.Client;
 
 namespace Torque
 {
@@ -64,8 +65,31 @@ namespace Torque
             });
             services.AddSingleton(config.GetSection(nameof(TorqueServiceOptions)).Get<TorqueServiceOptions>());
             services.AddSingleton<ITorqueService, TorqueService>();
-            services.AddDbContext<MesDbContext>(o => o.UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11")));
-            services.AddScoped<IMesService, MesService>();
+            var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>();
+            var mesDbContextOptionsBuilder = new DbContextOptionsBuilder<MesDbContext>().UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11"));
+            if (mesServiceOptions.EnableSensitiveDataLogging)
+            {
+                var log = new StreamWriter("debug.log", append: true);
+                mesDbContextOptionsBuilder.LogTo(s =>
+                {
+                    log.WriteLine(s);
+                    log.Flush();
+                }).EnableSensitiveDataLogging();
+                using var con = new OracleConnection(config.GetConnectionString("MES"));
+                con.Open();
+                log.WriteLine($"oracle server version: {con.ServerVersion}");
+                using var cmd = con.CreateCommand();
+                cmd.CommandText = "select object_name, object_type, status from all_objects where upper(object_name) like '%SCREWDRIVER%'";
+                using var reader = cmd.ExecuteReader();
+                log.WriteLine("OBJECT_NAME, OBJECT_TYPE, STATUS");
+                while (reader.Read())
+                {
+                    log.WriteLine($"{reader.GetString(0)}, {reader.GetString(1)}, {reader.GetString(2)}");
+                }
+            }
+            services.AddSingleton(mesDbContextOptionsBuilder.Options);
+            services.AddSingleton<MesDbContext>();
+            services.AddSingleton<IMesService, MesService>();
             services.AddTransient<Login>().AddTransient<MainWindow>().AddTransient<TestsViewer>().AddTransient<UsersWindow>();
             return services.BuildServiceProvider();
         }
