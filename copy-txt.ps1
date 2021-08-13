@@ -1,0 +1,1 @@
+Get-ChildItem -Include *.cs,*.xaml,*.csproj -Recurse | where {$_.DirectoryName -notlike "*\obj*" -and $_.DirectoryName -notlike "*\Migrations*"} | ForEach-Object {$dir=$_.DirectoryName.Replace($pwd, '..\txt'); New-Item -Type Directory -Path $dir -Force; Copy-Item $_ "$dir\$($_.Name).txt"}

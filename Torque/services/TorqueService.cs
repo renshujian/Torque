@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -56,7 +57,7 @@ namespace Torque
             var ip = Dns.GetHostAddresses(Options.Host)[0];
             modbusClient = new(ip, Options.Port);
             await modbusClient.ConnectAsync();
-            readTimer.Change(0, 1000 / 60);
+            readTimer.Change(0, 1000 / Options.HZ);
             readingTCS = new();
             return await readingTCS.Task;
         }
@@ -66,6 +67,7 @@ namespace Torque
             readTimer.Change(Timeout.Infinite, Timeout.Infinite);
             modbusClient?.Dispose();
             modbusClient = null;
+            File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", Results));
             Results.Sort((x, y) => y.CompareTo(x));
             var result = Results.Take(Options.Sample).DefaultIfEmpty().Average();
             readingTCS?.SetResult(result);
