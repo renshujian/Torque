@@ -31,7 +31,7 @@ namespace Torque
             sp = serviceProvider;
             getToolDelayed = new(_ =>
             {
-                var id = scaned.ToString();
+                var id = scaned.ToString().TrimEnd();
                 scaned.Clear();
                 var tool = MesService.GetTool(id);
                 if (tool is null)

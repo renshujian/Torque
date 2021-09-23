@@ -6,7 +6,7 @@ namespace Torque
     public interface ITorqueService
     {
         Task Zero();
-        Task<float> ReadAsync();
+        Task<double> ReadAsync();
         void StopRead();
     }
 }

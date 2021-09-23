@@ -65,7 +65,7 @@ namespace Torque
             });
             services.AddSingleton(config.GetSection(nameof(TorqueServiceOptions)).Get<TorqueServiceOptions>());
             services.AddSingleton<ITorqueService, TorqueService>();
-            var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>();
+            var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>() ?? new();
             var mesDbContextOptionsBuilder = new DbContextOptionsBuilder<MesDbContext>().UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11"));
             if (mesServiceOptions.EnableSensitiveDataLogging)
             {

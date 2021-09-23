@@ -1,77 +1,95 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Modbus;
 
 namespace Torque
 {
     class TorqueService : ITorqueService
     {
         public TorqueServiceOptions Options { get; set; }
-        public const float a = (10f - -10f) / (20000f - 4000f);
-        public float b = -a * 12000;
-        // 初始容量存储3分钟60hz数据。实测超过3分钟触发扩容没有可见卡顿
-        public List<float> Results { get; } = new(3 * 60 * 60);
-        readonly Timer readTimer;
-        ModbusClient? modbusClient;
-        TaskCompletionSource<float>? readingTCS;
+        public const double a = 15 * 1000 / 1.121 / 248 / 65536;
+        // 初始容量存储1分钟1000hz数据。
+        public List<double> Results { get; } = new(60 * 1000);
+        readonly byte[] buffer = new byte[4];
+        Socket? socket;
+        CancellationTokenSource? cts;
 
         public TorqueService(TorqueServiceOptions options)
         {
             Options = options;
-            readTimer = new(_ =>
+        }
+
+        public Task Zero()
+        {
+            return Task.CompletedTask;
+        }
+
+        public async Task<double> ReadAsync()
+        {
+            if (socket?.Connected == true)
             {
-                // List不是线程安全的，但这里可以忽略数据丢失和读取错误。实测14182次读取得到了14154个数据
-                ReadSingleAsync().ContinueWith(t => Results.Add(t.Result), TaskContinuationOptions.OnlyOnRanToCompletion);
-            });
-        }
-
-        async Task<float> ReadSingleAsync()
-        {
-            var response = await modbusClient.ReadHoldingRegisters(600, 2);
-            var data = new ArraySegment<byte>(response.Data, 1, response.Data.Length - 1);
-            var result = BigEndianConverter.ToSingle(new byte[] { data[2], data[3], data[0], data[1] });
-            return a * result + b;
-        }
-
-        public async Task Zero()
-        {
-            var ip = Dns.GetHostAddresses(Options.Host)[0];
-            modbusClient = new(ip, Options.Port);
-            await modbusClient.ConnectAsync();
-            var response = await modbusClient.ReadHoldingRegisters(600, 2);
-            var data = new ArraySegment<byte>(response.Data, 1, response.Data.Length - 1);
-            var result = BigEndianConverter.ToSingle(new byte[] { data[2], data[3], data[0], data[1] });
-            b = -a * result;
-            modbusClient?.Dispose();
-            modbusClient = null;
-        }
-
-        public async Task<float> ReadAsync()
-        {
+                throw new ApplicationException("TorqueService正在读取中，不要重复连接");
+            }
             Results.Clear();
             var ip = Dns.GetHostAddresses(Options.Host)[0];
-            modbusClient = new(ip, Options.Port);
-            await modbusClient.ConnectAsync();
-            readTimer.Change(0, 1000 / Options.HZ);
-            readingTCS = new();
-            return await readingTCS.Task;
+            socket = new(SocketType.Stream, ProtocolType.Tcp);
+            await socket.ConnectAsync(ip, Options.Port);
+            cts = new();
+            return await Task.Run(() =>
+            {
+                while (true)
+                {
+                    if (socket.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
+                    {
+                        var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
+                        var torque = a * value;
+                        Results.Add(torque);
+                    }
+                    else
+                    {
+                        throw new ApplicationException("TorqueService读取的数据帧错误");
+                    }
+                    if (cts.IsCancellationRequested)
+                    {
+                        if (socket.Available >= 4)
+                        {
+                            var bytes = new byte[socket.Available];
+                            socket.Receive(bytes);
+                            for (int i = 0; i <= bytes.Length - 4; i += 4)
+                            {
+                                var frame = bytes.AsSpan(i, 4);
+                                if (frame[2] == 0x0d && frame[3] == 0x0a)
+                                {
+                                    var value = BinaryPrimitives.ReadInt16BigEndian(frame[0..2]);
+                                    var torque = a * value;
+                                    Results.Add(torque);
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        socket.Shutdown(SocketShutdown.Both);
+                        socket.Dispose();
+                        File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", Results));
+                        Results.Sort((x, y) => y.CompareTo(x));
+                        return Results.Take(Options.Sample).Average();
+                    }
+                }
+            });
         }
 
         public void StopRead()
         {
-            readTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            modbusClient?.Dispose();
-            modbusClient = null;
-            File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", Results));
-            Results.Sort((x, y) => y.CompareTo(x));
-            var result = Results.Take(Options.Sample).DefaultIfEmpty().Average();
-            readingTCS?.SetResult(result);
-            readingTCS = null;
+            cts?.Cancel();
+            cts?.Dispose();
         }
     }
 }
