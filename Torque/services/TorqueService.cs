@@ -13,9 +13,10 @@ namespace Torque
     class TorqueService : ITorqueService
     {
         public TorqueServiceOptions Options { get; set; }
-        public const double a = 15 * 1000 / 1.121 / 248 / 65536;
         // 初始容量存储1分钟1000hz数据。
         public List<double> Results { get; } = new(60 * 1000);
+        double a;
+        double b;
         readonly byte[] buffer = new byte[4];
         Socket? socket;
         CancellationTokenSource? cts;
@@ -23,6 +24,8 @@ namespace Torque
         public TorqueService(TorqueServiceOptions options)
         {
             Options = options;
+            a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
+            b = options.b;
         }
 
         public Task Zero()
@@ -48,7 +51,7 @@ namespace Torque
                     if (socket.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
                     {
                         var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
-                        var torque = a * value;
+                        var torque = a * value + b;
                         Results.Add(torque);
                     }
                     else
@@ -67,7 +70,7 @@ namespace Torque
                                 if (frame[2] == 0x0d && frame[3] == 0x0a)
                                 {
                                     var value = BinaryPrimitives.ReadInt16BigEndian(frame[0..2]);
-                                    var torque = a * value;
+                                    var torque = a * value + b;
                                     Results.Add(torque);
                                 }
                                 else
