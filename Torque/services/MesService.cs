@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace Torque
 {
@@ -19,7 +20,7 @@ namespace Torque
 
         public Tool? GetTool(string id)
         {
-            return db.Tools.Where(t => t.Id == id).FirstOrDefault();
+            return db.Tools.FromSqlRaw("SELECT SCREWDRIVER, XYNJ FROM SCREWDRIVER_CMK WHERE SCREWDRIVER={0} AND CURRENTVALUE='是'", id).FirstOrDefault();
         }
 
         public void Upload(IList<Test> result)

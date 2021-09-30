@@ -59,7 +59,7 @@
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
             </Label>
             <Label Grid.Row="2">目标扭矩</Label>
-            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}N*M"/>
+            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}kgf*cm"/>
             <Button Name="ZeroButton" Grid.Row="3" Click="ResetTorque">扭矩零点</Button>
             <Button Grid.Row="3" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
