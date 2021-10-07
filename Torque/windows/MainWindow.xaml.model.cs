@@ -40,6 +40,17 @@ namespace Torque
             }
         }
 
+        bool saveTorqueData;
+        public bool SaveTorqueData
+        {
+            get => saveTorqueData;
+            set
+            {
+                saveTorqueData = value;
+                OnPropertyChanged();
+            }
+        }
+
         public void ClearTests()
         {
             LastTest = null;

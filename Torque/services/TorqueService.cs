@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -10,16 +8,19 @@ using System.Threading.Tasks;
 
 namespace Torque
 {
-    class TorqueService : ITorqueService
+    public class TorqueService
     {
         public TorqueServiceOptions Options { get; set; }
+        public double Threshold { get; set; }
         // 初始容量存储1分钟1000hz数据。
         public List<double> Results { get; } = new(60 * 1000);
         double a;
         double b;
         readonly byte[] buffer = new byte[4];
         Socket? socket;
-        CancellationTokenSource? cts;
+        CancellationTokenSource cts = new();
+
+        public event Action<double[]>? StopRecording;
 
         public TorqueService(TorqueServiceOptions options)
         {
@@ -33,66 +34,85 @@ namespace Torque
             return Task.CompletedTask;
         }
 
-        public async Task<double> ReadAsync()
+        public void StartRead()
         {
-            if (socket?.Connected == true)
+            if (socket is not null)
             {
-                throw new ApplicationException("TorqueService正在读取中，不要重复连接");
+                return;
             }
-            Results.Clear();
-            var ip = Dns.GetHostAddresses(Options.Host)[0];
             socket = new(SocketType.Stream, ProtocolType.Tcp);
-            await socket.ConnectAsync(ip, Options.Port);
+            var ip = Dns.GetHostAddresses(Options.Host)[0];
+            socket.Connect(ip, Options.Port);
             cts = new();
-            return await Task.Run(() =>
-            {
-                while (true)
-                {
-                    if (socket.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
-                    {
-                        var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
-                        var torque = a * value + b;
-                        Results.Add(torque);
-                    }
-                    else
-                    {
-                        throw new ApplicationException("TorqueService读取的数据帧错误");
-                    }
-                    if (cts.IsCancellationRequested)
-                    {
-                        if (socket.Available >= 4)
-                        {
-                            var bytes = new byte[socket.Available];
-                            socket.Receive(bytes);
-                            for (int i = 0; i <= bytes.Length - 4; i += 4)
-                            {
-                                var frame = bytes.AsSpan(i, 4);
-                                if (frame[2] == 0x0d && frame[3] == 0x0a)
-                                {
-                                    var value = BinaryPrimitives.ReadInt16BigEndian(frame[0..2]);
-                                    var torque = a * value + b;
-                                    Results.Add(torque);
-                                }
-                                else
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                        socket.Shutdown(SocketShutdown.Both);
-                        socket.Dispose();
-                        File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", Results));
-                        Results.Sort((x, y) => y.CompareTo(x));
-                        return Results.Take(Options.Sample).Average();
-                    }
-                }
-            });
+            Task.Run(Read); // TODO: 后台线程错误未传递
         }
 
         public void StopRead()
         {
-            cts?.Cancel();
-            cts?.Dispose();
+            if (cts.IsCancellationRequested) return;
+            cts.Cancel();
+            cts.Dispose();
+        }
+
+        void Read()
+        {
+            Results.Clear();
+            var recording = false;
+            while (!cts.IsCancellationRequested)
+            {
+                if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
+                {
+                    var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
+                    var torque = a * value + b;
+                    if (torque >= Threshold)
+                    {
+                        recording = true;
+                        Results.Add(torque);
+                    }
+                    else if (recording)
+                    {
+                        recording = false;
+                        StopRecording?.Invoke(Results.ToArray());
+                        Results.Clear();
+                    }
+                }
+                else
+                {
+                    throw new ApplicationException("TorqueService读取的数据帧错误");
+                }
+            }
+            if (socket!.Available >= 4)
+            {
+                var bytes = new byte[socket.Available];
+                socket.Receive(bytes);
+                for (int i = 0; i <= bytes.Length - 4; i += 4)
+                {
+                    var frame = bytes.AsSpan(i, 4);
+                    if (frame[2] == 0x0d && frame[3] == 0x0a)
+                    {
+                        var value = BinaryPrimitives.ReadInt16BigEndian(frame[0..2]);
+                        var torque = a * value + b;
+                        if (torque >= Threshold)
+                        {
+                            recording = true;
+                            Results.Add(torque);
+                        }
+                        else if (recording)
+                        {
+                            recording = false;
+                            StopRecording?.Invoke(Results.ToArray());
+                            Results.Clear();
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            socket.Shutdown(SocketShutdown.Both);
+            socket.Dispose();
+            socket = null;
         }
     }
 }

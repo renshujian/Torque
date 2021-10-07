@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -14,14 +15,14 @@ namespace Torque
     public partial class MainWindow : Window
     {
         internal MainWindowModel Model { get; } = new();
-        ITorqueService TorqueService { get; }
+        TorqueService TorqueService { get; }
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
         StringBuilder scaned = new();
         Timer getToolDelayed;
         IServiceProvider sp;
 
-        public MainWindow(ITorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
+        public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
@@ -36,7 +37,7 @@ namespace Torque
                 var tool = MesService.GetTool(id);
                 if (tool is null)
                 {
-                    Dispatcher.Invoke(() => MessageBox.Show($"没找到电批{id}"));
+                    Dispatcher.Invoke(() => MessageBox.Show(this, $"没找到电批{id}"));
                 }
                 else if (tool != Model.Tool)
                 {
@@ -44,6 +45,8 @@ namespace Torque
                     Dispatcher.Invoke(Model.ClearTests);
                 }
             });
+            TorqueService.StopRecording += AddTest;
+            Closed += (_, _) => TorqueService.StopRecording -= AddTest;
         }
 
         private void Window_TextInput(object sender, TextCompositionEventArgs e)
@@ -63,39 +66,53 @@ namespace Torque
             }
         }
 
-        private async void ReadTorque(object sender, RoutedEventArgs e)
+        private void ReadTorque(object sender, RoutedEventArgs e)
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            var torque = await TorqueService.ReadAsync();
+            TorqueService.Threshold = TorqueService.Options.Threshold * Model.Tool!.SetTorque;
+            TorqueService.StartRead();
+        }
+
+        private void AddTest(double[] data)
+        {
+            if (Model.SaveTorqueData)
+            {
+                File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", data));
+            }
+            Array.Sort(data, (x, y) => y.CompareTo(x));
+            var torque = data.Take(TorqueService.Options.Sample).Average();
+            if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
             var test = new Test
             {
-                ToolId = Model.Tool!.Id,
+                ToolId = Model.Tool.Id,
                 SetTorque = Model.Tool.SetTorque,
                 RealTorque = torque,
                 Diviation = (torque - Model.Tool.SetTorque) / Model.Tool.SetTorque,
                 TestTime = DateTime.Now
             };
-            Model.LastTest = test;
-            Model.Tests.Add(test);
-            if (!test.IsOK)
+            Dispatcher.InvokeAsync(() =>
             {
-                if (MessageBox.Show("数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                Model.LastTest = test;
+                Model.Tests.Add(test);
+                if (!test.IsOK)
                 {
-                    Model.ClearTests();
-                    return;
+                    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        Model.ClearTests();
+                    }
                 }
-            }
-            if (Model.Tests.Count >= 12 && Model.Tests.All(t => t.IsOK))
-            {
-                if (MessageBox.Show("校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                else if (Model.Tests.Count >= 12 && Model.Tests.All(t => t.IsOK))
                 {
-                    AppDbContext.Tests.AddRange(Model.Tests);
-                    AppDbContext.SaveChanges();
-                    MesService.Upload(Model.Tests);
-                    Model.ClearTests();
+                    if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        AppDbContext.Tests.AddRange(Model.Tests);
+                        AppDbContext.SaveChanges();
+                        MesService.Upload(Model.Tests);
+                        Model.ClearTests();
+                    }
                 }
-            }
+            });
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
