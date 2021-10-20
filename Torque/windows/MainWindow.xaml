@@ -5,9 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="450" Width="900"
-        InputMethod.IsInputMethodEnabled="False"
-        TextInput="Window_TextInput">
+        Title="紧固工具校准" Height="450" Width="900">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -53,7 +51,7 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <Label Grid.ColumnSpan="2">工具信息</Label>
+            <Button Grid.ColumnSpan="2" Click="ScanTool">工具信息</Button>
             <Label Grid.Row="1">电批编码</Label>
             <Label Grid.Row="1" Grid.Column="1" FontSize="14">
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
@@ -75,6 +73,7 @@
                 <Binding Path="LastTest.IsPass"/>
             </Label>
             <Button Grid.Row="4" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="4" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
         </Grid>
         <ListView ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>

@@ -1,10 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Windows;
-using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
@@ -18,8 +15,6 @@ namespace Torque
         TorqueService TorqueService { get; }
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
-        StringBuilder scaned = new();
-        Timer getToolDelayed;
         IServiceProvider sp;
 
         public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
@@ -30,29 +25,8 @@ namespace Torque
             MesService = mesService;
             AppDbContext = appDbContext;
             sp = serviceProvider;
-            getToolDelayed = new(_ =>
-            {
-                var id = scaned.ToString().TrimEnd();
-                scaned.Clear();
-                var tool = MesService.GetTool(id);
-                if (tool is null)
-                {
-                    Dispatcher.Invoke(() => MessageBox.Show(this, $"没找到电批{id}"));
-                }
-                else if (tool != Model.Tool)
-                {
-                    Model.Tool = tool;
-                    Dispatcher.Invoke(Model.ClearTests);
-                }
-            });
             TorqueService.StopRecording += AddTest;
             Closed += (_, _) => TorqueService.StopRecording -= AddTest;
-        }
-
-        private void Window_TextInput(object sender, TextCompositionEventArgs e)
-        {
-            scaned.Append(e.Text);
-            getToolDelayed.Change(300, Timeout.Infinite);
         }
 
         private async void ResetTorque(object sender, RoutedEventArgs e)
@@ -80,8 +54,19 @@ namespace Torque
             {
                 File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", data));
             }
-            Array.Sort(data, (x, y) => y.CompareTo(x));
-            var torque = data.Take(TorqueService.Options.Sample).Average();
+            var torque = 0.0;
+            // 取第一个递增峰值
+            foreach (var p in data)
+            {
+                if (p < torque)
+                {
+                    break;
+                }
+                else
+                {
+                    torque = p;
+                }
+            }
             if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
             var test = new Test
             {
@@ -102,7 +87,7 @@ namespace Torque
                         Model.ClearTests();
                     }
                 }
-                else if (Model.Tests.Count >= 12 && Model.Tests.All(t => t.IsOK))
+                else if (Model.Tests.Count >= 12 && Model.TestsAreOK)
                 {
                     if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
@@ -162,6 +147,35 @@ namespace Torque
                 {
                     MessageBox.Show("扭矩无法解析成浮点数");
                 }
+            }
+        }
+
+        private void ScanTool(object sender, RoutedEventArgs e)
+        {
+            var dialog = new ScanDialog();
+            if (dialog.ShowDialog() == true)
+            {
+                var tool = MesService.GetTool(dialog.id.Text);
+                if (tool is null)
+                {
+                    MessageBox.Show(this, $"没找到电批{dialog.id.Text}");
+                }
+                else if (tool != Model.Tool)
+                {
+                    Model.Tool = tool;
+                    Model.ClearTests();
+                }
+            }
+        }
+
+        private void UploadTests(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show(this, "是否上传并清除当前数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                AppDbContext.Tests.AddRange(Model.Tests);
+                AppDbContext.SaveChanges();
+                MesService.Upload(Model.Tests);
+                Model.ClearTests();
             }
         }
     }

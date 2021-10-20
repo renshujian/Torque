@@ -17,7 +17,7 @@ namespace Torque
     {
         void ShowException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show(e.Exception.Message, e.Exception.ToString(), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(e.Exception.ToString(), e.Exception.Message, MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         void AppStartup(object sender, StartupEventArgs e)

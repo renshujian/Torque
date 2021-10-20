@@ -20,6 +20,6 @@
         <TextBox Name="id" Grid.Column="1"/>
         <TextBlock Grid.Row="1">目标扭矩：</TextBlock>
         <TextBox Name="setTorque" Grid.Row="1" Grid.Column="1"/>
-        <Button Grid.Row="2" Grid.Column="2" Width="50" HorizontalAlignment="Right" Margin="3" Click="Button_Click" IsDefault="True">确认</Button>
+        <Button Grid.Row="2" Grid.Column="1" Width="50" HorizontalAlignment="Right" Margin="3" Click="Button_Click" IsDefault="True">确认</Button>
     </Grid>
 </Window>

@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Torque
@@ -29,6 +30,8 @@ namespace Torque
         }
 
         public ObservableCollection<Test> Tests { get; } = new();
+        public bool TestsAreOK => Tests.All(t => t.IsOK);
+
         Test? lastTest;
         public Test? LastTest
         {
