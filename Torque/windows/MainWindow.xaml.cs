@@ -29,6 +29,7 @@ namespace Torque
             sp = serviceProvider;
             TorqueService.OnData += HandleData;
             Closed += (_, _) => TorqueService.OnData -= HandleData;
+            Directory.CreateDirectory("results");
         }
 
         private async void ResetTorque(object sender, RoutedEventArgs e)
@@ -48,6 +49,7 @@ namespace Torque
             ZeroButton.IsEnabled = false;
             resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
             result = File.CreateText(resultPath);
+            result.AutoFlush = true;
             result.WriteLine("milliseconds,torque");
             TorqueService.StartRead();
         }
@@ -97,11 +99,13 @@ namespace Torque
             ZeroButton.IsEnabled = true;
             TorqueService.StopRead();
             result?.Dispose();
-            var torque = File.ReadAllLines(resultPath!)
+            var data = File.ReadAllLines(resultPath!)
                 .Skip(1)
-                .Select(r => double.Parse(r.Split(',')[1]))
-                .Max();
-            AddTest(torque);
+                .Select(r => double.Parse(r.Split(',')[1]));
+            if (data.Any())
+            {
+                AddTest(data.Max());
+            }
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)
