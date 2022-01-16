@@ -13,6 +13,7 @@ namespace Torque
         public TorqueServiceOptions Options { get; set; }
         double a;
         double b;
+        int interval;
         Socket? socket;
         CancellationTokenSource cts = new();
 
@@ -23,6 +24,7 @@ namespace Torque
             Options = options;
             a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
             b = options.b;
+            interval = 1000 / options.Hz;
         }
 
         public Task Zero()
@@ -54,14 +56,19 @@ namespace Torque
         {
             var buffer = new byte[4];
             var stopWatch = Stopwatch.StartNew();
+            long lastMilliseconds = -interval;
             while (!cts.IsCancellationRequested)
             {
                 if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
                 {
-                    var milliseconds = stopWatch.ElapsedMilliseconds;
-                    var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
-                    var torque = a * value + b;
-                    OnData?.Invoke(milliseconds, torque);
+                   var milliseconds = stopWatch.ElapsedMilliseconds;
+                    if (milliseconds >= lastMilliseconds + interval)
+                    {
+                        lastMilliseconds = milliseconds;
+                        var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
+                        var torque = a * value + b;
+                        OnData?.Invoke(milliseconds, torque);
+                    }
                 }
                 else
                 {
