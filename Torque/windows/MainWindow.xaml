@@ -21,7 +21,6 @@
             </MenuItem>
             <MenuItem Header="调试" IsEnabled="{Binding User.IsAdmin}">
                 <MenuItem Header="输入工具信息..." Click="InputTool"/>
-                <MenuItem Header="保存扭矩传感器数据" IsCheckable="True" IsChecked="{Binding SaveTorqueData}"/>
             </MenuItem>
         </Menu>
         <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 0">

@@ -16,6 +16,8 @@ namespace Torque
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
         IServiceProvider sp;
+        string? resultPath;
+        StreamWriter? result;
 
         public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
@@ -25,8 +27,8 @@ namespace Torque
             MesService = mesService;
             AppDbContext = appDbContext;
             sp = serviceProvider;
-            TorqueService.StopRecording += AddTest;
-            Closed += (_, _) => TorqueService.StopRecording -= AddTest;
+            TorqueService.OnData += HandleData;
+            Closed += (_, _) => TorqueService.OnData -= HandleData;
         }
 
         private async void ResetTorque(object sender, RoutedEventArgs e)
@@ -44,30 +46,19 @@ namespace Torque
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            TorqueService.Threshold = TorqueService.Options.Threshold * Model.Tool!.SetTorque;
+            resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
+            result = File.CreateText(resultPath);
+            result.WriteLine("milliseconds,torque");
             TorqueService.StartRead();
         }
 
-        private void AddTest(double[] data)
+        private void HandleData(long milliseconds, double torque)
         {
-            if (Model.SaveTorqueData)
-            {
-                File.WriteAllText($"torque-{DateTime.Now:yyyyMMddHHmmss}.txt", string.Join("\r\n", data));
-            }
-            var torque = 0.0;
-            // 取第一个递增峰值
-            foreach (var p in data)
-            {
-                if (p < torque)
-                {
-                    break;
-                }
-                else
-                {
-                    torque = p;
-                }
-            }
-            if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
+            result?.WriteLine($"{milliseconds},{torque}");
+        }
+
+        private void AddTest(double torque)
+        {
             var test = new Test
             {
                 ToolId = Model.Tool.Id,
@@ -105,6 +96,12 @@ namespace Torque
             StopButton.Visibility = Visibility.Hidden;
             ZeroButton.IsEnabled = true;
             TorqueService.StopRead();
+            result?.Dispose();
+            var torque = File.ReadAllLines(resultPath!)
+                .Skip(1)
+                .Select(r => double.Parse(r.Split(',')[1]))
+                .Max();
+            AddTest(torque);
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)
