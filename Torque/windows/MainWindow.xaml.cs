@@ -146,7 +146,7 @@ namespace Torque
                 }
                 else
                 {
-                    MessageBox.Show("扭矩无法解析成浮点数");
+                    MessageBox.Show("夹紧力无法解析成浮点数");
                 }
             }
         }

@@ -22,7 +22,7 @@ namespace Torque
         public TorqueService(TorqueServiceOptions options)
         {
             Options = options;
-            a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
+            a = options.a ?? 10 * 1000 / options.Sensitivity / 248 / 65536;
             b = options.b;
             interval = 1000 / options.Hz;
         }

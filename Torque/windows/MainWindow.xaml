@@ -20,7 +20,7 @@
                 <MenuItem Header="用户..." Click="OpenUsersWindow"/>
             </MenuItem>
             <MenuItem Header="调试" IsEnabled="{Binding User.IsAdmin}">
-                <MenuItem Header="输入工具信息..." Click="InputTool"/>
+                <MenuItem Header="输入测试参数..." Click="InputTool"/>
             </MenuItem>
         </Menu>
         <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 0">
@@ -50,14 +50,14 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <Button Grid.ColumnSpan="2" Click="ScanTool">工具信息</Button>
-            <Label Grid.Row="1">电批编码</Label>
+            <Button Grid.ColumnSpan="2" Click="ScanTool">测试参数</Button>
+            <Label Grid.Row="1">螺钉规格</Label>
             <Label Grid.Row="1" Grid.Column="1" FontSize="14">
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
             </Label>
-            <Label Grid.Row="2">目标扭矩</Label>
-            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}kgf*cm"/>
-            <Button Name="ZeroButton" Grid.Row="3" Click="ResetTorque">扭矩零点</Button>
+            <Label Grid.Row="2">目标夹紧力</Label>
+            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}KN"/>
+            <Button Name="ZeroButton" Grid.Row="3" Click="ResetTorque">零点</Button>
             <Button Grid.Row="3" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
                     <Binding Path="Tool" Converter="{StaticResource ObjectBoolConverter}"/>
@@ -82,9 +82,9 @@
                             <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Converter="{StaticResource IndexConverter}"/>
                         </GridViewColumn.DisplayMemberBinding>
                     </GridViewColumn>
-                    <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
-                    <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="60"/>
-                    <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="60"/>
+                    <GridViewColumn Header="螺钉规格" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                    <GridViewColumn Header="目标夹紧力" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
+                    <GridViewColumn Header="实测夹紧力" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
                     <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
                     <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
                     <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>

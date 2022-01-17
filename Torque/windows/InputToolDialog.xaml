@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque"
         mc:Ignorable="d"
-        Title="输入工具信息" SizeToContent="Height" Width="300">
+        Title="输入测试参数" SizeToContent="Height" Width="300">
     <Grid Margin="5">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="auto"/>
@@ -16,9 +16,9 @@
             <RowDefinition Height="20"/>
             <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
-        <TextBlock>电批编码：</TextBlock>
+        <TextBlock>螺钉规格：</TextBlock>
         <TextBox Name="id" Grid.Column="1"/>
-        <TextBlock Grid.Row="1">目标扭矩：</TextBlock>
+        <TextBlock Grid.Row="1">目标夹紧力：</TextBlock>
         <TextBox Name="setTorque" Grid.Row="1" Grid.Column="1"/>
         <Button Grid.Row="2" Grid.Column="1" Width="50" HorizontalAlignment="Right" Margin="3" Click="Button_Click" IsDefault="True">确认</Button>
     </Grid>
