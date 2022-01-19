@@ -18,6 +18,7 @@ namespace Torque
         CancellationTokenSource cts = new();
 
         public event Action<long, double>? OnData;
+        public event Action<Exception>? OnError;
 
         public TorqueService(TorqueServiceOptions options)
         {
@@ -42,7 +43,18 @@ namespace Torque
             var ip = Dns.GetHostAddresses(Options.Host)[0];
             socket.Connect(ip, Options.Port);
             cts = new();
-            Task.Run(Read); // TODO: 后台线程错误未传递
+            Task.Run(Read).ContinueWith(task =>
+            {
+                // cancel或socket异常才进入这段代码
+                // cancel时已经shutdown socket
+                // socket异常时不用shutdown
+                socket.Dispose();
+                socket = null;
+                if (task.Exception is not null)
+                {
+                    OnError?.Invoke(task.Exception);
+                }
+            });
         }
 
         public void StopRead()
@@ -50,6 +62,8 @@ namespace Torque
             if (cts.IsCancellationRequested) return;
             cts.Cancel();
             cts.Dispose();
+            // Read循环在socket.Receive时可能一直阻塞，需要断开连接来响应cancel
+            socket?.Shutdown(SocketShutdown.Both);
         }
 
         void Read()
@@ -72,13 +86,26 @@ namespace Torque
                 }
                 else
                 {
-                    throw new ApplicationException("TorqueService读取的数据帧错误");
+                    // 尝试找到符合协议的数据包尾
+                    while (!cts.IsCancellationRequested)
+                    {
+                        if (socket.Receive(buffer, 1, SocketFlags.None) < 1)
+                        {
+                            stopWatch.Stop();
+                            throw new ApplicationException("socket连接异常");
+                        }
+                        if (buffer[0] == 0x0d)
+                        {
+                            socket.Receive(buffer, 1, SocketFlags.None);
+                            if (buffer[0] == 0x0a)
+                            {
+                                break; // 跳出当前逐字节读取数据的循环，结束else块进入下一轮主循环
+                            }
+                        }
+                    }
                 }
             }
             stopWatch.Stop();
-            socket!.Shutdown(SocketShutdown.Both);
-            socket.Dispose();
-            socket = null;
         }
     }
 }

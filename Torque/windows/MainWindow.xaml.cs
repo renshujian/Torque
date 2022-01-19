@@ -28,7 +28,12 @@ namespace Torque
             AppDbContext = appDbContext;
             sp = serviceProvider;
             TorqueService.OnData += HandleData;
-            Closed += (_, _) => TorqueService.OnData -= HandleData;
+            TorqueService.OnError += HandleError;
+            Closed += (_, _) =>
+            {
+                TorqueService.OnData -= HandleData;
+                TorqueService.OnError -= HandleError;
+            };
             Directory.CreateDirectory("results");
         }
 
@@ -57,6 +62,14 @@ namespace Torque
         private void HandleData(long milliseconds, double torque)
         {
             result?.WriteLine($"{milliseconds},{torque}");
+        }
+
+        private void HandleError(Exception e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(e.ToString(), e.Message, MessageBoxButton.OK, MessageBoxImage.Error);
+            });
         }
 
         private void AddTest(double torque)
@@ -105,6 +118,9 @@ namespace Torque
             if (data.Any())
             {
                 AddTest(data.Max());
+            } else
+            {
+                MessageBox.Show("没有测量数据");
             }
         }
 
