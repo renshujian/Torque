@@ -48,7 +48,7 @@ namespace Torque
                 // cancel或socket异常才进入这段代码
                 // cancel时已经shutdown socket
                 // socket异常时不用shutdown
-                socket.Dispose();
+                socket.Close(0);
                 socket = null;
                 if (task.Exception is not null)
                 {
