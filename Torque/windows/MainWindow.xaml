@@ -83,8 +83,8 @@
                         </GridViewColumn.DisplayMemberBinding>
                     </GridViewColumn>
                     <GridViewColumn Header="螺钉规格" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
-                    <GridViewColumn Header="目标夹紧力" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
-                    <GridViewColumn Header="实测夹紧力" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
+                    <GridViewColumn Header="目标夹紧力" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f4}}" Width="80"/>
+                    <GridViewColumn Header="实测夹紧力" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f4}}" Width="80"/>
                     <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
                     <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
                     <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>
