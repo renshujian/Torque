@@ -106,11 +106,13 @@ namespace Torque
             });
         }
 
-        private void StopButton_Click(object sender, RoutedEventArgs e)
+        private async void StopButton_Click(object sender, RoutedEventArgs e)
         {
+            StopButton.IsEnabled = false;
+            await TorqueService.StopRead();
+            StopButton.IsEnabled = true;
             StopButton.Visibility = Visibility.Hidden;
             ZeroButton.IsEnabled = true;
-            TorqueService.StopRead();
             result?.Dispose();
             var data = File.ReadAllLines(resultPath!)
                 .Skip(1)

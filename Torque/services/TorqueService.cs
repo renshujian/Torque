@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +15,7 @@ namespace Torque
         int interval;
         Socket? socket;
         CancellationTokenSource cts = new();
+        Task task = Task.CompletedTask;
 
         public event Action<long, double>? OnData;
         public event Action<Exception>? OnError;
@@ -37,13 +37,12 @@ namespace Torque
         {
             if (socket is not null)
             {
-                return;
+                throw new ApplicationException($"已有socket, connected: {socket.Connected}");
             }
             socket = new(SocketType.Stream, ProtocolType.Tcp);
-            var ip = Dns.GetHostAddresses(Options.Host)[0];
-            socket.Connect(ip, Options.Port);
+            socket.Connect(Options.Host, Options.Port);
             cts = new();
-            Task.Run(Read).ContinueWith(task =>
+            task = Task.Run(Read).ContinueWith(task =>
             {
                 // cancel或socket异常才进入这段代码
                 // cancel时已经shutdown socket
@@ -57,17 +56,19 @@ namespace Torque
             });
         }
 
-        public void StopRead()
+        public Task StopRead()
         {
-            if (cts.IsCancellationRequested) return;
+            if (task.IsCompleted) return task;
             cts.Cancel();
             cts.Dispose();
             // Read循环在socket.Receive时可能一直阻塞，需要断开连接来响应cancel
             socket?.Shutdown(SocketShutdown.Both);
+            return task;
         }
 
         void Read()
         {
+            var validPackets = 0;
             var buffer = new byte[4];
             var stopWatch = Stopwatch.StartNew();
             long lastMilliseconds = -interval;
@@ -75,7 +76,8 @@ namespace Torque
             {
                 if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
                 {
-                   var milliseconds = stopWatch.ElapsedMilliseconds;
+                    validPackets++;
+                    var milliseconds = stopWatch.ElapsedMilliseconds;
                     if (milliseconds >= lastMilliseconds + interval)
                     {
                         lastMilliseconds = milliseconds;
@@ -106,6 +108,10 @@ namespace Torque
                 }
             }
             stopWatch.Stop();
+            if (validPackets == 0)
+            {
+                throw new ApplicationException("没有收到有效数据");
+            }
         }
     }
 }
