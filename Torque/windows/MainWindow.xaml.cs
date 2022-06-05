@@ -30,10 +30,12 @@ namespace Torque
             sp = serviceProvider;
             TorqueService.OnData += HandleData;
             TorqueService.OnError += HandleError;
+            TorqueService.OnSocketException += HandleSocketException;
             Closed += (_, _) =>
             {
                 TorqueService.OnData -= HandleData;
                 TorqueService.OnError -= HandleError;
+                torqueService.OnSocketException -= HandleSocketException;
             };
             Directory.CreateDirectory("results");
         }
@@ -70,6 +72,22 @@ namespace Torque
             Dispatcher.Invoke(() =>
             {
                 MessageBox.Show(e.ToString(), e.Message, MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+        }
+
+        private bool HandleSocketException(Exception e)
+        {
+            return Dispatcher.Invoke(() =>
+            {
+                if (MessageBox.Show(e.ToString(), "传感器连接异常，是否重连？", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    return true;
+                }
+                else
+                {
+                    StopButton_Click(null!, null!);
+                    return false;
+                }
             });
         }
 
