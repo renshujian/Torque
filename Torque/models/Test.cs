@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Torque
 {
@@ -9,7 +10,8 @@ namespace Torque
         public double RealTorque { get; init; }
         public double Diviation { get; init; }
         public DateTime TestTime { get; init; }
-        public bool IsOK => Diviation is >= -0.2 and <= 0.2;
+        [NotMapped] public double AllowedDiviation { get; init; } = 0.2;
+        public bool IsOK => Math.Abs(Diviation) <= AllowedDiviation;
         public string IsPass => IsOK ? "PASS" : "NG";
     }
 }

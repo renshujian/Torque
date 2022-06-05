@@ -29,6 +29,8 @@ namespace Torque
             }
         }
 
+        public double AllowedDiviation { get; set; } = 0.2;
+
         public ObservableCollection<Test> Tests { get; } = new();
         public bool TestsAreOK => Tests.All(t => t.IsOK);
 

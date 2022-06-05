@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
@@ -80,6 +81,7 @@ namespace Torque
                 SetTorque = Model.Tool.SetTorque,
                 RealTorque = torque,
                 Diviation = (torque - Model.Tool.SetTorque) / Model.Tool.SetTorque,
+                AllowedDiviation = Model.AllowedDiviation,
                 TestTime = DateTime.Now
             };
             Dispatcher.InvokeAsync(() =>
@@ -195,6 +197,15 @@ namespace Torque
                 AppDbContext.SaveChanges();
                 MesService.Upload(Model.Tests);
                 Model.ClearTests();
+            }
+        }
+
+        private void AllowedDiviationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var content = ((ComboBoxItem)e.AddedItems[0]!).Content;
+            if (content is string s && double.TryParse(s.TrimEnd('%'), out var allowedDiviation))
+            {
+                Model.AllowedDiviation = allowedDiviation / 100;
             }
         }
     }
