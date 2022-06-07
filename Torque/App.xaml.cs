@@ -48,7 +48,7 @@ namespace Torque
                 Shutdown();
             }
         }
- 
+
         static ServiceProvider ConfigureServices(IConfiguration config)
         {
             ServiceCollection services = new();
@@ -63,8 +63,9 @@ namespace Torque
                 o.Password.RequireUppercase = false;
                 o.Lockout.AllowedForNewUsers = false;
             });
-            services.AddSingleton(config.GetSection(nameof(TorqueServiceOptions)).Get<TorqueServiceOptions>());
+            services.AddSingleton(config.GetSection(nameof(StaticTorqueServiceOptions)).Get<StaticTorqueServiceOptions>());
             services.AddSingleton<TorqueService, TorqueService>();
+            services.AddSingleton<StaticTorqueService, StaticTorqueService>();
             var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>() ?? new();
             var mesDbContextOptionsBuilder = new DbContextOptionsBuilder<MesDbContext>().UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11"));
             if (mesServiceOptions.EnableSensitiveDataLogging)

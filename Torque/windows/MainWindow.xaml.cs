@@ -13,14 +13,12 @@ namespace Torque
     public partial class MainWindow : Window
     {
         internal MainWindowModel Model { get; } = new();
-        TorqueService TorqueService { get; }
+        StaticTorqueService TorqueService { get; }
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
         IServiceProvider sp;
-        string? resultPath;
-        StreamWriter? result;
 
-        public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
+        public MainWindow(StaticTorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
@@ -28,12 +26,12 @@ namespace Torque
             MesService = mesService;
             AppDbContext = appDbContext;
             sp = serviceProvider;
-            TorqueService.OnData += HandleData;
+            TorqueService.StopRecording += AddTest;
             TorqueService.OnError += HandleError;
             TorqueService.OnSocketException += HandleSocketException;
             Closed += (_, _) =>
             {
-                TorqueService.OnData -= HandleData;
+                TorqueService.StopRecording -= AddTest;
                 TorqueService.OnError -= HandleError;
                 torqueService.OnSocketException -= HandleSocketException;
             };
@@ -55,16 +53,8 @@ namespace Torque
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
-            result = File.CreateText(resultPath);
-            result.AutoFlush = true;
-            result.WriteLine("milliseconds,torque");
+            TorqueService.Threshold = TorqueService.Options.Threshold * Model.Tool!.SetTorque;
             TorqueService.StartRead();
-        }
-
-        private void HandleData(long milliseconds, double torque)
-        {
-            result?.WriteLine($"{milliseconds},{torque}");
         }
 
         private void HandleError(Exception e)
@@ -91,8 +81,23 @@ namespace Torque
             });
         }
 
-        private void AddTest(double torque)
+        private void AddTest(double[] data)
         {
+            File.WriteAllText(Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.txt"), string.Join("\r\n", data));
+            var torque = 0.0;
+            // 取第一个递增峰值
+            foreach (var p in data)
+            {
+                if (p < torque)
+                {
+                    break;
+                }
+                else
+                {
+                    torque = p;
+                }
+            }
+            if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
             var test = new Test
             {
                 ToolId = Model.Tool.Id,
@@ -133,17 +138,6 @@ namespace Torque
             StopButton.IsEnabled = true;
             StopButton.Visibility = Visibility.Hidden;
             ZeroButton.IsEnabled = true;
-            result?.Dispose();
-            var data = File.ReadAllLines(resultPath!)
-                .Skip(1)
-                .Select(r => double.Parse(r.Split(',')[1]));
-            if (data.Any())
-            {
-                AddTest(data.Max());
-            } else
-            {
-                MessageBox.Show("没有测量数据");
-            }
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)
@@ -184,7 +178,7 @@ namespace Torque
                 }
                 else
                 {
-                    MessageBox.Show("夹紧力无法解析成浮点数");
+                    MessageBox.Show("扭矩无法解析成浮点数");
                 }
             }
         }
