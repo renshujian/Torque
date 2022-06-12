@@ -15,7 +15,7 @@
             <RowDefinition Height="20"/>
             <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
-        <TextBlock>扳手编码：</TextBlock>
+        <TextBlock>电批编码：</TextBlock>
         <TextBox Name="id" Grid.Column="1" InputMethod.IsInputMethodEnabled="False"/>
         <Button Grid.Row="1" Grid.Column="1" Width="50" HorizontalAlignment="Right" Margin="3" Click="Button_Click" IsDefault="True">确认</Button>
     </Grid>

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="扭矩扳手校准" Height="450" Width="900">
+        Title="紧固工具校准" Height="450" Width="900">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -58,7 +58,7 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.ColumnSpan="2" Click="ScanTool">工具信息</Button>
-            <Label Grid.Row="1">扳手编码</Label>
+            <Label Grid.Row="1">电批编码</Label>
             <Label Grid.Row="1" Grid.Column="1" FontSize="14">
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
             </Label>
@@ -94,7 +94,7 @@
                             <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Converter="{StaticResource IndexConverter}"/>
                         </GridViewColumn.DisplayMemberBinding>
                     </GridViewColumn>
-                    <GridViewColumn Header="扳手编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                    <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
                     <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
                     <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
                     <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>

@@ -9,7 +9,7 @@
     <ListView Name="listView">
         <ListView.View>
             <GridView>
-                <GridViewColumn Header="扳手编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
                 <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
                 <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
                 <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>

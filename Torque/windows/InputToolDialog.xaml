@@ -16,7 +16,7 @@
             <RowDefinition Height="20"/>
             <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
-        <TextBlock>扳手编码：</TextBlock>
+        <TextBlock>电批编码：</TextBlock>
         <TextBox Name="id" Grid.Column="1"/>
         <TextBlock Grid.Row="1">目标扭矩：</TextBlock>
         <TextBox Name="setTorque" Grid.Row="1" Grid.Column="1"/>
