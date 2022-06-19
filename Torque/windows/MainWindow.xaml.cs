@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using LiveChartsCore.Defaults;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
@@ -19,11 +21,13 @@ namespace Torque
         IServiceProvider sp;
         string? resultPath;
         StreamWriter? result;
+        ObservableCollection<TimeSpanPoint> resultValues;
 
         public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
+            resultValues = (ObservableCollection<TimeSpanPoint>)Model.Series[0].Values!;
             TorqueService = torqueService;
             MesService = mesService;
             AppDbContext = appDbContext;
@@ -59,11 +63,13 @@ namespace Torque
             result = File.CreateText(resultPath);
             result.AutoFlush = true;
             result.WriteLine("milliseconds,torque");
+            resultValues.Clear();
             TorqueService.StartRead();
         }
 
         private void HandleData(long milliseconds, double torque)
         {
+            resultValues.Add(new(TimeSpan.FromMilliseconds(milliseconds), torque));
             result?.WriteLine($"{milliseconds},{torque}");
         }
 

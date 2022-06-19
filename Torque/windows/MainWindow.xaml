@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
         Title="紧固工具校准" Height="450" Width="900">
@@ -86,6 +87,7 @@
             <Button Grid.Row="5" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
             <Button Grid.Row="5" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
         </Grid>
+        <lvc:CartesianChart DockPanel.Dock="Top" Height="200" Series="{Binding Series}" XAxes="{Binding XAxes}" />
         <ListView ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>
                 <GridView>
