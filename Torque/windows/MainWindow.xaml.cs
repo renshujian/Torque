@@ -83,21 +83,9 @@ namespace Torque
 
         private void AddTest(double[] data)
         {
+            if (data.Length == 0) return;
             File.WriteAllText(Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.txt"), string.Join("\r\n", data));
-            var torque = 0.0;
-            // 取第一个递增峰值
-            foreach (var p in data)
-            {
-                if (p < torque)
-                {
-                    break;
-                }
-                else
-                {
-                    torque = p;
-                }
-            }
-            if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
+            var torque = data.Max();
             var test = new Test
             {
                 ToolId = Model.Tool.Id,

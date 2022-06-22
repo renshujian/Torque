@@ -16,7 +16,7 @@ namespace Torque
         public List<double> Results { get; } = new(60 * 1000);
         double a;
         double b;
-        long interval = 300;
+        TimeSpan period;
         Socket? socket;
         CancellationTokenSource cts = new();
         Task task = Task.CompletedTask;
@@ -30,6 +30,7 @@ namespace Torque
             Options = options;
             a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
             b = options.b;
+            period = options.Period;
         }
 
         public Task Zero()
@@ -71,9 +72,8 @@ namespace Torque
             Results.Clear();
             var validPackets = 0;
             var buffer = new byte[4];
-            var stopWatch = Stopwatch.StartNew();
-            long lastMilliseconds = -interval;
-            var recording = false;
+            var stopWatch = new Stopwatch();
+            var lastAboveThreshold = false;
             while (!cts.IsCancellationRequested)
             {
                 try
@@ -81,26 +81,27 @@ namespace Torque
                     if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
                     {
                         validPackets++;
-                        var milliseconds = stopWatch.ElapsedMilliseconds;
                         var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
                         var torque = a * value + b;
-                        if (torque >= Threshold)
+                        var aboveThreshold = torque >= Threshold;
+                        if (aboveThreshold && !lastAboveThreshold)
                         {
-                            if (!recording && milliseconds - lastMilliseconds >= interval)
-                            {
-                                recording = true;
-                            }
-                            if (recording)
-                            {
-                                Results.Add(torque);
-                            }
+                            lastAboveThreshold = true;
+                            stopWatch.Start();
                         }
-                        else if (recording)
+                        if (!aboveThreshold && lastAboveThreshold)
                         {
-                            recording = false;
-                            lastMilliseconds = milliseconds;
-                            StopRecording?.Invoke(Results.ToArray());
-                            Results.Clear();
+                            lastAboveThreshold = false;
+                        }
+                        if (stopWatch.IsRunning)
+                        {
+                            Results.Add(torque);
+                            if (stopWatch.Elapsed >= period)
+                            {
+                                stopWatch.Reset();
+                                StopRecording?.Invoke(Results.ToArray());
+                                Results.Clear();
+                            }
                         }
                     }
                     else
