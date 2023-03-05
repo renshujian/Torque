@@ -21,10 +21,10 @@
                 <MenuItem Header="用户..." Click="OpenUsersWindow"/>
             </MenuItem>
             <MenuItem Header="调试" IsEnabled="{Binding User.IsAdmin}">
-                <MenuItem Header="输入测试参数..." Click="InputTool"/>
+                <MenuItem Header="输入测试参数..." Click="InputTool" IsEnabled="{Binding NotTesting}"/>
             </MenuItem>
         </Menu>
-        <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 0">
+        <Grid DockPanel.Dock="Left" Width="300" Margin="5 0 0 5">
             <Grid.Resources>
                 <Style TargetType="Label">
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -56,9 +56,11 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <Button Grid.ColumnSpan="2" Click="ScanTool">测试参数</Button>
+            <Button Grid.ColumnSpan="2" Click="ScanTool" IsEnabled="{Binding NotTesting}">测试参数</Button>
             <Label Grid.Row="1">螺钉规格</Label>
             <Label Grid.Row="1" Grid.Column="1" FontSize="14">
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
@@ -66,11 +68,12 @@
             <Label Grid.Row="2">目标夹紧力</Label>
             <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}KN"/>
             <Label Grid.Row="3">允许偏倚</Label>
-            <ComboBox Grid.Row="3" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged">
+            <ComboBox Grid.Row="3" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged" IsEnabled="{Binding NotTesting}">
+                <ComboBoxItem>5%</ComboBoxItem>
                 <ComboBoxItem>10%</ComboBoxItem>
                 <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
             </ComboBox>
-            <Button Name="ZeroButton" Grid.Row="4" Click="ResetTorque">零点</Button>
+            <Button Grid.Row="4" Click="ResetTorque" IsEnabled="{Binding NotTesting}">零点</Button>
             <Button Grid.Row="4" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
                     <Binding Path="Tool" Converter="{StaticResource ObjectBoolConverter}"/>
@@ -78,14 +81,11 @@
                 开始测量
             </Button>
             <Button Name="StopButton" Grid.Row="4" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Label Grid.Row="5" Grid.ColumnSpan="2" FontSize="100">
-                <Label.Background>
-                    <Binding Path="LastTest.IsOK" Converter="{StaticResource BoolColorConverter}"/>
-                </Label.Background>
-                <Binding Path="LastTest.IsPass"/>
-            </Label>
-            <Button Grid.Row="5" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
-            <Button Grid.Row="5" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
+            <Button Grid.Row="5" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="5" Grid.Column="1" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
+            <Button Grid.Row="6" Click="AddSampling" IsEnabled="{Binding NotTesting}">添加采样段</Button>
+            <Button Grid.Row="6" Grid.Column="1" Click="removeSampling" IsEnabled="{Binding NotTesting}">删除采样段</Button>
+            <ListBox Name="samplingListBox" Grid.Row="7" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" />
         </Grid>
         <lvc:CartesianChart DockPanel.Dock="Top" Height="200" Series="{Binding Series}" XAxes="{Binding XAxes}" />
         <ListView ItemsSource="{Binding Tests}" Margin="5">

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,21 +13,20 @@ namespace Torque
         public TorqueServiceOptions Options { get; set; }
         double a;
         double b;
-        int interval;
         Socket? socket;
         CancellationTokenSource cts = new();
         Task task = Task.CompletedTask;
 
-        public event Action<long, double>? OnData;
+        public event Action<TimeSpan, double>? OnData;
         public event Action<Exception>? OnError;
         public event Func<SocketException, bool>? OnSocketException;
+        public event Action? OnStop;
 
         public TorqueService(TorqueServiceOptions options)
         {
             Options = options;
             a = options.a ?? 10 * 1000 / options.Sensitivity / 248 / 65536;
             b = options.b;
-            interval = 1000 / options.Hz;
         }
 
         public Task Zero()
@@ -34,7 +34,7 @@ namespace Torque
             return Task.CompletedTask;
         }
 
-        public void StartRead()
+        public void StartRead(MainWindowModel.Sampling[] samplings)
         {
             if (socket is not null)
             {
@@ -44,7 +44,7 @@ namespace Torque
             socket.ReceiveTimeout = 3000;
             socket.Connect(Options.Host, Options.Port);
             cts = new();
-            task = Task.Run(Read).ContinueWith(task =>
+            task = Task.Run(() => Read(samplings)).ContinueWith(task =>
             {
                 socket.Close(3);
                 socket = null;
@@ -63,12 +63,13 @@ namespace Torque
             return task;
         }
 
-        void Read()
+        void Read(MainWindowModel.Sampling[] samplings)
         {
             var validPackets = 0;
             var buffer = new byte[4];
             var stopWatch = Stopwatch.StartNew();
-            long lastMilliseconds = -interval;
+            var sampling = samplings[0];
+            var lastTime = -sampling.Interval;
             while (!cts.IsCancellationRequested)
             {
                 try
@@ -76,13 +77,23 @@ namespace Torque
                     if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
                     {
                         validPackets++;
-                        var milliseconds = stopWatch.ElapsedMilliseconds;
-                        if (milliseconds >= lastMilliseconds + interval)
+                        var time = stopWatch.Elapsed;
+                        if (time > sampling.Time)
                         {
-                            lastMilliseconds = milliseconds;
+                            sampling = samplings.FirstOrDefault(it => it.Time > time, sampling);
+                            if (time > sampling.Time)
+                            {
+                                // 没有下一个采样段了，结束循环
+                                OnStop?.Invoke();
+                                break;
+                            }
+                        }
+                        if (time >= lastTime + sampling.Interval)
+                        {
+                            lastTime = time;
                             var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
                             var torque = a * value + b;
-                            OnData?.Invoke(milliseconds, torque);
+                            OnData?.Invoke(time, torque);
                         }
                     }
                     else

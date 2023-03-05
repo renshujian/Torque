@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Identity;
@@ -28,6 +30,14 @@ namespace Torque
             var sp = scope.ServiceProvider;
             var login = sp.GetRequiredService<Login>();
             var main = sp.GetRequiredService<MainWindow>();
+            var samplings = config.GetSection("Samplings").Get<IList<MainWindowModel.Sampling>>()
+                .Where(it => it.Time > TimeSpan.Zero && it.Interval > TimeSpan.Zero)
+                .OrderBy(it => it.Time)
+                .DistinctBy(it => it.Time);
+            foreach (var sampling in samplings)
+            {
+                main.Model.Samplings.Add(sampling);
+            }
             if (login.ShowDialog() == true)
             {
                 if (login.User!.IsInRole("查看"))

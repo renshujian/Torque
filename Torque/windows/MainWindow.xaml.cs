@@ -35,11 +35,13 @@ namespace Torque
             TorqueService.OnData += HandleData;
             TorqueService.OnError += HandleError;
             TorqueService.OnSocketException += HandleSocketException;
+            TorqueService.OnStop += HandleStop;
             Closed += (_, _) =>
             {
                 TorqueService.OnData -= HandleData;
                 TorqueService.OnError -= HandleError;
-                torqueService.OnSocketException -= HandleSocketException;
+                TorqueService.OnSocketException -= HandleSocketException;
+                TorqueService.OnStop -= HandleStop;
             };
             Directory.CreateDirectory("results");
         }
@@ -48,29 +50,27 @@ namespace Torque
         {
             if (MessageBox.Show("要标定扭矩传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                ZeroButton.IsEnabled = false;
                 await TorqueService.Zero();
                 Model.ClearTests();
-                ZeroButton.IsEnabled = true;
             }
         }
 
         private void ReadTorque(object sender, RoutedEventArgs e)
         {
             StopButton.Visibility = Visibility.Visible;
-            ZeroButton.IsEnabled = false;
+            Model.NotTesting = false;
             resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
             result = File.CreateText(resultPath);
             result.AutoFlush = true;
             result.WriteLine("milliseconds,torque");
             resultValues.Clear();
-            TorqueService.StartRead();
+            TorqueService.StartRead(Model.Samplings.ToArray());
         }
 
-        private void HandleData(long milliseconds, double torque)
+        private void HandleData(TimeSpan time, double torque)
         {
-            resultValues.Add(new(TimeSpan.FromMilliseconds(milliseconds), torque));
-            result?.WriteLine($"{milliseconds},{torque}");
+            resultValues.Add(new(time, torque));
+            result?.WriteLine($"{time},{torque}");
         }
 
         private void HandleError(Exception e)
@@ -96,6 +96,8 @@ namespace Torque
                 }
             });
         }
+
+        private void HandleStop() => Dispatcher.Invoke(() => StopButton_Click(null!, null!));
 
         private void AddTest(double torque)
         {
@@ -138,7 +140,7 @@ namespace Torque
             await TorqueService.StopRead();
             StopButton.IsEnabled = true;
             StopButton.Visibility = Visibility.Hidden;
-            ZeroButton.IsEnabled = true;
+            Model.NotTesting = true;
             result?.Dispose();
             var data = File.ReadAllLines(resultPath!)
                 .Skip(1)
@@ -231,6 +233,63 @@ namespace Torque
             {
                 Model.AllowedDiviation = allowedDiviation / 100;
             }
+        }
+
+        private void AddSampling(object sender, RoutedEventArgs e)
+        {
+            var dialog = new AddSamplingDialog();
+            if (dialog.ShowDialog() != true) return;
+
+            if (!TimeSpan.TryParse(dialog.time.Text, out var time))
+            {
+                MessageBox.Show(this, "时间节点格式应为 天.小时:分钟:秒.小数秒");
+                return;
+            }
+            if (time <= TimeSpan.Zero)
+            {
+                MessageBox.Show(this, "时间节点应大于0");
+                return;
+            }
+            if (!TimeSpan.TryParse(dialog.interval.Text, out var interval))
+            {
+                MessageBox.Show(this, "采样间隔格式应为 天.小时:分钟:秒.小数秒");
+                return;
+            }
+            if (interval <= TimeSpan.Zero)
+            {
+                MessageBox.Show(this, "采样间隔应大于0");
+                return;
+            }
+            // 按照time单调递增插入
+            for (int i = 0; i < Model.Samplings.Count; i++)
+            {
+                if (Model.Samplings[i].Time == time)
+                {
+                    MessageBox.Show(this, "不能添加重复的时间节点");
+                    return;
+                }
+                else if (Model.Samplings[i].Time > time)
+                {
+                    Model.Samplings.Insert(i, new(time, interval));
+                    return;
+                }
+            }
+            // 已有项都小于现在要插入的time, 插入到列表尾
+            Model.Samplings.Add(new(time, interval));
+        }
+
+        private void removeSampling(object sender, RoutedEventArgs e)
+        {
+            if (Model.Samplings.Count == 1)
+            {
+                MessageBox.Show(this, "采样段不能为空");
+                return;
+            }
+            try
+            {
+                Model.Samplings.RemoveAt(samplingListBox.SelectedIndex);
+            }
+            catch { }
         }
     }
 }

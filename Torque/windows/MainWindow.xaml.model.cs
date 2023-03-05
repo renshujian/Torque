@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 
 namespace Torque
 {
-    class MainWindowModel : INotifyPropertyChanged
+    public class MainWindowModel : INotifyPropertyChanged
     {
         User user = new("匿名用户");
         public User User
@@ -31,6 +31,17 @@ namespace Torque
             set
             {
                 tool = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool notTesting = true;
+        public bool NotTesting
+        {
+            get => notTesting;
+            set
+            {
+                notTesting = value;
                 OnPropertyChanged();
             }
         }
@@ -60,8 +71,10 @@ namespace Torque
             }
         };
 
+        public ObservableCollection<Sampling> Samplings { get; } = new();
+
         public ObservableCollection<Test> Tests { get; } = new();
-        public bool TestsAreOK => Tests.All(t => t.IsOK);
+        public bool TestsAreOK => Tests.Any() && Tests.All(t => t.IsOK);
 
         Test? lastTest;
         public Test? LastTest
@@ -84,6 +97,14 @@ namespace Torque
         void OnPropertyChanged([CallerMemberName] string name = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public readonly record struct Sampling(TimeSpan Time, TimeSpan Interval)
+        {
+            public override string ToString()
+            {
+                return $"{Time}前采样间隔为{Interval}"; 
+            }
         }
     }
 }
