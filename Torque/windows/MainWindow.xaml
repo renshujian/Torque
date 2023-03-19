@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="450" Width="900">
+        Title="紧固工具校准" Height="500" Width="900">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -87,8 +87,7 @@
             <Button Grid.Row="6" Grid.Column="1" Click="removeSampling" IsEnabled="{Binding NotTesting}">删除采样段</Button>
             <ListBox Name="samplingListBox" Grid.Row="7" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" />
         </Grid>
-        <lvc:CartesianChart DockPanel.Dock="Top" Height="200" Series="{Binding Series}" XAxes="{Binding XAxes}" />
-        <ListView ItemsSource="{Binding Tests}" Margin="5">
+        <ListView DockPanel.Dock="Bottom" Height="200" ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="序号" Width="30">
@@ -105,5 +104,6 @@
                 </GridView>
             </ListView.View>
         </ListView>
+        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" ZoomMode="X" TooltipPosition="Hidden" />
     </DockPanel>
 </Window>

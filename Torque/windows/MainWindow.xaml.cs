@@ -64,6 +64,9 @@ namespace Torque
             result.AutoFlush = true;
             result.WriteLine("milliseconds,torque");
             resultValues.Clear();
+            chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
+            Model.XAxes[0].MinLimit = null;
+            Model.XAxes[0].MaxLimit = null;
             TorqueService.StartRead(Model.Samplings.ToArray());
         }
 
@@ -140,6 +143,7 @@ namespace Torque
             await TorqueService.StopRead();
             StopButton.IsEnabled = true;
             StopButton.Visibility = Visibility.Hidden;
+            chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.X;
             Model.NotTesting = true;
             result?.Dispose();
             var data = File.ReadAllLines(resultPath!)
