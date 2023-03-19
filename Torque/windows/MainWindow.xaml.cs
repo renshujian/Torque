@@ -5,7 +5,12 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using LiveChartsCore.Defaults;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.SkiaSharpView.Painting.Effects;
+using LiveChartsCore.SkiaSharpView.VisualElements;
 using Microsoft.Extensions.DependencyInjection;
+using SkiaSharp;
 
 namespace Torque
 {
@@ -23,12 +28,16 @@ namespace Torque
         StreamWriter? result;
         ObservableCollection<TimeSpanPoint> resultValues;
 
-        public MainWindow(TorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
+        public MainWindow(TorqueServiceOptions torqueServiceOptions, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
             resultValues = (ObservableCollection<TimeSpanPoint>)Model.Series[0].Values!;
-            TorqueService = torqueService;
+            Model.Sensitivity = torqueServiceOptions.Sensitivity;
+            Model.A = torqueServiceOptions.a;
+            Model.B = torqueServiceOptions.b;
+            // TODO: 将TorqueServie从窗口属性中移除，在开始测量时构建（如何停止？）
+            TorqueService = new TorqueService(torqueServiceOptions);
             MesService = mesService;
             AppDbContext = appDbContext;
             sp = serviceProvider;
@@ -48,7 +57,7 @@ namespace Torque
 
         private async void ResetTorque(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("要标定扭矩传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (MessageBox.Show("要标定传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
                 await TorqueService.Zero();
                 Model.ClearTests();
@@ -57,6 +66,12 @@ namespace Torque
 
         private void ReadTorque(object sender, RoutedEventArgs e)
         {
+            TorqueService.Options = TorqueService.Options with
+            {
+                Sensitivity = Model.Sensitivity,
+                a = Model.A,
+                b = Model.B,
+            };
             StopButton.Visibility = Visibility.Visible;
             Model.NotTesting = false;
             resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
@@ -146,16 +161,54 @@ namespace Torque
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.X;
             Model.NotTesting = true;
             result?.Dispose();
-            var data = File.ReadAllLines(resultPath!)
-                .Skip(1)
-                .Select(r => double.Parse(r.Split(',')[1]));
-            if (data.Any())
-            {
-                AddTest(data.Max());
-            } else
+            if (resultValues.Count == 0)
             {
                 MessageBox.Show("没有测量数据");
+                return;
             }
+            AddTest(resultValues.Max(point => point.Value.GetValueOrDefault()));
+
+            int? looseIndex = null;
+            for (int i = resultValues.Count - 1; i >= 0 ; i--)
+            {
+                if (resultValues[i].Value < Model.LooseForce)
+                {
+                    looseIndex = i;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if (looseIndex == null)
+            {
+                return;
+            }
+
+            var loosePoint = resultValues[looseIndex.Value];
+            chart.Sections = new RectangularSection[]
+            {
+                    new RectangularSection
+                    {
+                        Xi = loosePoint.Coordinate.SecondaryValue,
+                        Xj = loosePoint.Coordinate.SecondaryValue,
+                        Yj = 25,
+                        Stroke = new SolidColorPaint(SKColors.Black)
+                        {
+                            PathEffect = new DashEffect(new float[] { 5, 5 })
+                        },
+                    }
+            };
+            chart.VisualElements = new LabelVisual[]
+            {
+                    new LabelVisual
+                    {
+                        Text = $"X: {loosePoint.TimeSpan}\r\nY: {loosePoint.Value}",
+                        X = loosePoint.Coordinate.SecondaryValue,
+                        Paint = new SolidColorPaint(SKColors.Red) { ZIndex = 10 },
+                        LocationUnit = LiveChartsCore.Measure.MeasureUnit.ChartValues,
+                    }
+            };
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)

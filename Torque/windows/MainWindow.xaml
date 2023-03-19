@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="500" Width="900">
+        Title="紧固工具校准" Height="550" Width="1000">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -45,12 +45,20 @@
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
                     <Setter Property="VerticalContentAlignment" Value="Center"/>
                 </Style>
+                <Style TargetType="TextBox">
+                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="FontSize" Value="20"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
             </Grid.Resources>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
@@ -66,26 +74,31 @@
                 <TextBlock Text="{Binding Tool.Id}" TextWrapping="Wrap"/>
             </Label>
             <Label Grid.Row="2">目标夹紧力</Label>
-            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}KN"/>
-            <Label Grid.Row="3">允许偏倚</Label>
-            <ComboBox Grid.Row="3" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged" IsEnabled="{Binding NotTesting}">
+            <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}kN"/>
+            <Label Grid.Row="3">失效夹紧力</Label>
+            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding LooseForce}" IsEnabled="{Binding NotTesting}" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="kN" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 2 5" />
+            <Label Grid.Row="4">灵敏度</Label>
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Sensitivity}" IsEnabled="{Binding NotTesting}" />
+            <Label Grid.Row="5">量程</Label>
+            <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding B}" IsEnabled="{Binding NotTesting}" />
+            <Label Grid.Row="6">允许偏倚</Label>
+            <ComboBox Grid.Row="6" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged" IsEnabled="{Binding NotTesting}">
                 <ComboBoxItem>5%</ComboBoxItem>
                 <ComboBoxItem>10%</ComboBoxItem>
                 <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
             </ComboBox>
-            <Button Grid.Row="4" Click="ResetTorque" IsEnabled="{Binding NotTesting}">零点</Button>
-            <Button Grid.Row="4" Grid.Column="1" Click="ReadTorque">
+            <Button Grid.Row="7" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="7" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
                     <Binding Path="Tool" Converter="{StaticResource ObjectBoolConverter}"/>
                 </Button.IsEnabled>
                 开始测量
             </Button>
-            <Button Name="StopButton" Grid.Row="4" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Button Grid.Row="5" Click="ClearTests">清除数据</Button>
-            <Button Grid.Row="5" Grid.Column="1" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
-            <Button Grid.Row="6" Click="AddSampling" IsEnabled="{Binding NotTesting}">添加采样段</Button>
-            <Button Grid.Row="6" Grid.Column="1" Click="removeSampling" IsEnabled="{Binding NotTesting}">删除采样段</Button>
-            <ListBox Name="samplingListBox" Grid.Row="7" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" />
+            <Button Name="StopButton" Grid.Row="7" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
+            <Button Grid.Row="8" Click="AddSampling" IsEnabled="{Binding NotTesting}">添加采样段</Button>
+            <Button Grid.Row="8" Grid.Column="1" Click="removeSampling" IsEnabled="{Binding NotTesting}">删除采样段</Button>
+            <ListBox Name="samplingListBox" Grid.Row="9" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" />
         </Grid>
         <ListView DockPanel.Dock="Bottom" Height="200" ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>
@@ -104,6 +117,6 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" ZoomMode="X" TooltipPosition="Hidden" />
+        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" ZoomMode="X" TooltipPosition="Hidden" />
     </DockPanel>
 </Window>

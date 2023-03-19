@@ -46,6 +46,50 @@ namespace Torque
             }
         }
 
+        double sensitivity;
+        public double Sensitivity
+        {
+            get => sensitivity;
+            set
+            {
+                sensitivity = value;
+                OnPropertyChanged();
+            }
+        }
+
+        double? a;
+        public double? A
+        {
+            get => a;
+            set
+            {
+                a = value;
+                OnPropertyChanged();
+            }
+        }
+
+        double b;
+        public double B
+        {
+            get => b;
+            set
+            {
+                b = value;
+                OnPropertyChanged();
+            }
+        }
+
+        double looseForce;
+        public double LooseForce
+        {
+            get => looseForce;
+            set
+            {
+                looseForce = value;
+                OnPropertyChanged();
+            }
+        }
+
         public double AllowedDiviation { get; set; } = 0.2;
 
         public ISeries[] Series { get; } =
@@ -68,6 +112,14 @@ namespace Torque
                 Labeler = value => new TimeSpan((long)value).ToString(),
                 UnitWidth = TimeSpan.FromMilliseconds(1).Ticks,
                 MinStep = TimeSpan.FromSeconds(1).Ticks,
+            }
+        };
+
+        public Axis[] YAxes { get; } =
+        {
+            new Axis
+            {
+                Labeler = value => $"{value} kN",
             }
         };
 
