@@ -76,7 +76,6 @@ namespace Torque
             Model.NotTesting = false;
             resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
             result = File.CreateText(resultPath);
-            result.AutoFlush = true;
             result.WriteLine("milliseconds,torque");
             resultValues.Clear();
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
@@ -87,8 +86,11 @@ namespace Torque
 
         private void HandleData(TimeSpan time, double torque)
         {
-            resultValues.Add(new(time, torque));
-            result?.WriteLine($"{time},{torque}");
+            Dispatcher.InvokeAsync(() =>
+            {
+                resultValues.Add(new(time, torque));
+                result?.WriteLine($"{time},{torque}");
+            });
         }
 
         private void HandleError(Exception e)
