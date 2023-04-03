@@ -65,7 +65,6 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
-                <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.ColumnSpan="2" Click="ScanTool" IsEnabled="{Binding NotTesting}">测试参数</Button>
@@ -96,9 +95,12 @@
                 开始测量
             </Button>
             <Button Name="StopButton" Grid.Row="7" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Button Grid.Row="8" Click="AddSampling" IsEnabled="{Binding NotTesting}">添加采样段</Button>
-            <Button Grid.Row="8" Grid.Column="1" Click="removeSampling" IsEnabled="{Binding NotTesting}">删除采样段</Button>
-            <ListBox Name="samplingListBox" Grid.Row="9" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" />
+            <DataGrid Grid.Row="8" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" AutoGenerateColumns="False" FontSize="16">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="在此时间前" Binding="{Binding Time}" Width="144" />
+                    <DataGridTextColumn Header="采样频率" Binding="{Binding Frequency}" Width="144" />
+                </DataGrid.Columns>
+            </DataGrid>
         </Grid>
         <ListView DockPanel.Dock="Bottom" Height="200" ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>

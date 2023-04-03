@@ -150,13 +150,5 @@ namespace Torque
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
-
-        public readonly record struct Sampling(TimeSpan Time, TimeSpan Interval)
-        {
-            public override string ToString()
-            {
-                return $"{Time}前采样间隔为{Interval}"; 
-            }
-        }
     }
 }

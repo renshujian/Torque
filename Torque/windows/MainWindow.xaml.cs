@@ -66,6 +66,7 @@ namespace Torque
 
         private void ReadTorque(object sender, RoutedEventArgs e)
         {
+            ValidateSamplings();
             TorqueService.Options = TorqueService.Options with
             {
                 Sensitivity = Model.Sensitivity,
@@ -81,7 +82,7 @@ namespace Torque
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
             Model.XAxes[0].MinLimit = null;
             Model.XAxes[0].MaxLimit = null;
-            TorqueService.StartRead(Model.Samplings.ToArray());
+            TorqueService.StartRead(Model.Samplings.OrderBy(it => it.Time).ToArray());
         }
 
         private void HandleData(TimeSpan time, double torque)
@@ -294,61 +295,29 @@ namespace Torque
             }
         }
 
-        private void AddSampling(object sender, RoutedEventArgs e)
+        private void ValidateSamplings()
         {
-            var dialog = new AddSamplingDialog();
-            if (dialog.ShowDialog() != true) return;
-
-            if (!TimeSpan.TryParse(dialog.time.Text, out var time))
-            {
-                MessageBox.Show(this, "时间节点格式应为 天.小时:分钟:秒.小数秒");
-                return;
-            }
-            if (time <= TimeSpan.Zero)
-            {
-                MessageBox.Show(this, "时间节点应大于0");
-                return;
-            }
-            if (!TimeSpan.TryParse(dialog.interval.Text, out var interval))
-            {
-                MessageBox.Show(this, "采样间隔格式应为 天.小时:分钟:秒.小数秒");
-                return;
-            }
-            if (interval <= TimeSpan.Zero)
-            {
-                MessageBox.Show(this, "采样间隔应大于0");
-                return;
-            }
-            // 按照time单调递增插入
-            for (int i = 0; i < Model.Samplings.Count; i++)
-            {
-                if (Model.Samplings[i].Time == time)
-                {
-                    MessageBox.Show(this, "不能添加重复的时间节点");
-                    return;
-                }
-                else if (Model.Samplings[i].Time > time)
-                {
-                    Model.Samplings.Insert(i, new(time, interval));
-                    return;
-                }
-            }
-            // 已有项都小于现在要插入的time, 插入到列表尾
-            Model.Samplings.Add(new(time, interval));
-        }
-
-        private void removeSampling(object sender, RoutedEventArgs e)
-        {
-            if (Model.Samplings.Count == 1)
+            var samplings = Model.Samplings;
+            if (samplings.Count == 0)
             {
                 MessageBox.Show(this, "采样段不能为空");
                 return;
             }
-            try
+            if (samplings.Any(it => it.Time <= TimeSpan.Zero))
             {
-                Model.Samplings.RemoveAt(samplingListBox.SelectedIndex);
+                MessageBox.Show(this, "采样时间节点应大于0");
+                return;
             }
-            catch { }
+            if (samplings.Any(it => it.Frequency <= 0))
+            {
+                MessageBox.Show(this, "采样频率应大于0");
+                return;
+            }
+            if (samplings.DistinctBy(it => it.Time).Count() < samplings.Count)
+            {
+                MessageBox.Show(this, "不能有重复的采样时间节点");
+                return;
+            }
         }
     }
 }

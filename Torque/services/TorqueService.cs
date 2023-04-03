@@ -34,7 +34,7 @@ namespace Torque
             return Task.CompletedTask;
         }
 
-        public void StartRead(MainWindowModel.Sampling[] samplings)
+        public void StartRead(Sampling[] samplings)
         {
             if (socket is not null)
             {
@@ -63,7 +63,7 @@ namespace Torque
             return task;
         }
 
-        void Read(MainWindowModel.Sampling[] samplings)
+        void Read(Sampling[] samplings)
         {
             var validPackets = 0;
             var buffer = new byte[4];

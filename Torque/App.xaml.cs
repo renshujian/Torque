@@ -30,10 +30,7 @@ namespace Torque
             var sp = scope.ServiceProvider;
             var login = sp.GetRequiredService<Login>();
             var main = sp.GetRequiredService<MainWindow>();
-            var samplings = config.GetSection("Samplings").Get<IList<MainWindowModel.Sampling>>()
-                .Where(it => it.Time > TimeSpan.Zero && it.Interval > TimeSpan.Zero)
-                .OrderBy(it => it.Time)
-                .DistinctBy(it => it.Time);
+            var samplings = config.GetSection("Samplings").Get<IList<Sampling>>();
             foreach (var sampling in samplings)
             {
                 main.Model.Samplings.Add(sampling);
