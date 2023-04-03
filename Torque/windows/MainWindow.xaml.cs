@@ -66,7 +66,7 @@ namespace Torque
 
         private void ReadTorque(object sender, RoutedEventArgs e)
         {
-            ValidateSamplings();
+            if (!ValidateSamplings()) return;
             TorqueService.Options = TorqueService.Options with
             {
                 Sensitivity = Model.Sensitivity,
@@ -295,29 +295,30 @@ namespace Torque
             }
         }
 
-        private void ValidateSamplings()
+        private bool ValidateSamplings()
         {
             var samplings = Model.Samplings;
             if (samplings.Count == 0)
             {
                 MessageBox.Show(this, "采样段不能为空");
-                return;
+                return false;
             }
             if (samplings.Any(it => it.Time <= TimeSpan.Zero))
             {
                 MessageBox.Show(this, "采样时间节点应大于0");
-                return;
+                return false;
             }
             if (samplings.Any(it => it.Frequency <= 0))
             {
                 MessageBox.Show(this, "采样频率应大于0");
-                return;
+                return false;
             }
             if (samplings.DistinctBy(it => it.Time).Count() < samplings.Count)
             {
                 MessageBox.Show(this, "不能有重复的采样时间节点");
-                return;
+                return false;
             }
+            return true;
         }
     }
 }
