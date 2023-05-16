@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="550" Width="1000">
+        Title="紧固工具校准" Height="700" Width="1000">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -65,6 +65,8 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.ColumnSpan="2" Click="ScanTool" IsEnabled="{Binding NotTesting}">测试参数</Button>
@@ -95,7 +97,11 @@
                 开始测量
             </Button>
             <Button Name="StopButton" Grid.Row="7" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <DataGrid Grid.Row="8" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" AutoGenerateColumns="False" FontSize="16">
+            <TextBox Grid.Row="8" Text="{Binding XAxes[0].MinLimit}" IsEnabled="{Binding NotTesting}" />
+            <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding XAxes[0].MaxLimit}" IsEnabled="{Binding NotTesting}" />
+            <Button Grid.Row="9" Click="ZoomChartData" IsEnabled="{Binding NotTesting}">缩放图表</Button>
+            <Button Grid.Row="9" Grid.Column="1" Click="ResetZoom" IsEnabled="{Binding NotTesting}">恢复图表</Button>
+            <DataGrid Grid.Row="10" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" AutoGenerateColumns="False" FontSize="16">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="在此时间前" Binding="{Binding Time}" Width="144" />
                     <DataGridTextColumn Header="采样频率" Binding="{Binding Frequency}" Width="144" />
@@ -119,6 +125,6 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" ZoomMode="X" TooltipPosition="Hidden" />
+        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" ZoomMode="X" TooltipPosition="Hidden" EasingFunction="{x:Null}" />
     </DockPanel>
 </Window>

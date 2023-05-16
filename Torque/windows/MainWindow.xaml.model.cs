@@ -119,7 +119,7 @@ namespace Torque
         {
             new Axis
             {
-                Labeler = value => $"{value} kN",
+                Labeler = value => $"{value:G5} kN",
             }
         };
 

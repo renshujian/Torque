@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -26,13 +27,17 @@ namespace Torque
         IServiceProvider sp;
         string? resultPath;
         StreamWriter? result;
-        ObservableCollection<TimeSpanPoint> resultValues;
+        ObservableCollection<TimeSpanPoint> chartValues;
+        // 4千万满足1个小时1000Hz加71小时1Hz
+        List<TimeSpanPoint> resultValues = new(40_000_000);
+        TimeSpan lastChartAt;
+        TimeSpan chartInterval = TimeSpan.FromSeconds(1);
 
         public MainWindow(TorqueServiceOptions torqueServiceOptions, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
-            resultValues = (ObservableCollection<TimeSpanPoint>)Model.Series[0].Values!;
+            chartValues = (ObservableCollection<TimeSpanPoint>)Model.Series[0].Values!;
             Model.Sensitivity = torqueServiceOptions.Sensitivity;
             Model.A = torqueServiceOptions.a;
             Model.B = torqueServiceOptions.b;
@@ -77,21 +82,26 @@ namespace Torque
             Model.NotTesting = false;
             resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
             result = File.CreateText(resultPath);
-            result.WriteLine("milliseconds,torque");
+            result.WriteLine("time,torque");
             resultValues.Clear();
+            chartValues.Clear();
+            lastChartAt = TimeSpan.Zero;
+            chart.Sections = Array.Empty<RectangularSection>();
+            chart.VisualElements = Array.Empty<LabelVisual>();
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
-            Model.XAxes[0].MinLimit = null;
-            Model.XAxes[0].MaxLimit = null;
+            ResetZoom(null!, null!);
             TorqueService.StartRead(Model.Samplings.OrderBy(it => it.Time).ToArray());
         }
 
         private void HandleData(TimeSpan time, double torque)
         {
-            Dispatcher.InvokeAsync(() =>
-            {
-                resultValues.Add(new(time, torque));
-                result?.WriteLine($"{time},{torque}");
-            });
+            TimeSpanPoint point = new(time, torque);
+            resultValues.Add(point);
+            result?.WriteLine($"{time},{torque}");
+            if (time - lastChartAt > chartInterval) {
+                lastChartAt = time;
+                Dispatcher.InvokeAsync(() => chartValues.Add(point));
+            }
         }
 
         private void HandleError(Exception e)
@@ -212,6 +222,27 @@ namespace Torque
                         LocationUnit = LiveChartsCore.Measure.MeasureUnit.ChartValues,
                     }
             };
+        }
+
+        private void ZoomChartData(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int start = resultValues.FindIndex(it => it.TimeSpan.Ticks > Model.XAxes[0].MinLimit);
+                int end = resultValues.FindIndex(start, it => it.TimeSpan.Ticks > Model.XAxes[0].MaxLimit);
+                Model.Series[0].Values = resultValues.GetRange(start, end - start);
+            }
+            catch
+            {
+                Model.Series[0].Values = chartValues;
+            }
+        }
+
+        private void ResetZoom(object sender, RoutedEventArgs e)
+        {
+            Model.Series[0].Values = chartValues;
+            Model.XAxes[0].MinLimit = null;
+            Model.XAxes[0].MaxLimit = null;
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)
