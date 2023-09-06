@@ -29,17 +29,23 @@
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
                     <Setter Property="VerticalContentAlignment" Value="Center"/>
                     <Setter Property="Background" Value="DeepSkyBlue"/>
-                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="Margin" Value="0 2"/>
                     <Setter Property="BorderBrush" Value="Black"/>
                     <Setter Property="BorderThickness" Value="0.7"/>
                     <Setter Property="FontSize" Value="20"/>
                 </Style>
                 <Style TargetType="Button">
-                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="Margin" Value="0 2"/>
                     <Setter Property="FontSize" Value="20"/>
                 </Style>
                 <Style TargetType="ComboBox">
-                    <Setter Property="Margin" Value="0 5"/>
+                    <Setter Property="Margin" Value="0 2"/>
+                    <Setter Property="FontSize" Value="20"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
+                <Style TargetType="TextBox">
+                    <Setter Property="Margin" Value="0 2"/>
                     <Setter Property="FontSize" Value="20"/>
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
                     <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -50,6 +56,7 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
@@ -70,22 +77,24 @@
                 <ComboBoxItem>10%</ComboBoxItem>
                 <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
             </ComboBox>
-            <Button Name="ZeroButton" Grid.Row="4" Click="ResetTorque">零点</Button>
-            <Button Grid.Row="4" Grid.Column="1" Click="ReadTorque">
+            <Label Grid.Row="4">峰值索引</Label>
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PeakIndex}" />
+            <Button Name="ZeroButton" Grid.Row="5" Click="ResetTorque">零点</Button>
+            <Button Grid.Row="5" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
                     <Binding Path="Tool" Converter="{StaticResource ObjectBoolConverter}"/>
                 </Button.IsEnabled>
                 开始测量
             </Button>
-            <Button Name="StopButton" Grid.Row="4" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Label Grid.Row="5" Grid.ColumnSpan="2" FontSize="100">
+            <Button Name="StopButton" Grid.Row="5" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
+            <Label Grid.Row="6" Grid.ColumnSpan="2" FontSize="100">
                 <Label.Background>
                     <Binding Path="LastTest.IsOK" Converter="{StaticResource BoolColorConverter}"/>
                 </Label.Background>
                 <Binding Path="LastTest.IsPass"/>
             </Label>
-            <Button Grid.Row="5" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
-            <Button Grid.Row="5" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
+            <Button Grid.Row="6" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="6" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
         </Grid>
         <ListView ItemsSource="{Binding Tests}" Margin="5">
             <ListView.View>

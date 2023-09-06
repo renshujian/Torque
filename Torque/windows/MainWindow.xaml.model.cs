@@ -31,6 +31,17 @@ namespace Torque
 
         public double AllowedDiviation { get; set; } = 0.2;
 
+        int peakIndex = 0;
+        public int PeakIndex
+        {
+            get => peakIndex;
+            set
+            {
+                peakIndex = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<Test> Tests { get; } = new();
         public bool TestsAreOK => Tests.All(t => t.IsOK);
 
