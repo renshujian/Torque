@@ -54,7 +54,8 @@ namespace Torque
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            TorqueService.Threshold = TorqueService.Options.Threshold * Model.Tool!.SetTorque;
+            TorqueService.BeginThreshold = TorqueService.Options.BeginThreshold * Model.Tool!.SetTorque;
+            TorqueService.EndThreshold = TorqueService.Options.EndThreshold * Model.Tool!.SetTorque;
             TorqueService.StartRead();
         }
 
@@ -92,19 +93,22 @@ namespace Torque
             Dispatcher.InvokeAsync(() =>
             {
                 List<double> peaks = new();
-                if (data[0] > data[1])
+                var rising = true;
+                for (int i = 1; i < data.Length; i++)
                 {
-                    peaks.Add(data[0]);
-                }
-                for (int i = 1; i < data.Length - 1; i++)
-                {
-                    if (data[i] >= data[i - 1] && data[i] > data[i + 1])
+                    if (data[i] > data[i - 1])
                     {
-                        peaks.Add(data[i]);
+                        rising = true;
+                    }
+                    else if (data[i] < data[i - 1] && rising)
+                    {
+                        rising = false;
+                        peaks.Add(data[i - 1]);
                     }
                 }
-                if (data[^1] >= data[^2])
+                if (rising)
                 {
+                    // rising = false;
                     peaks.Add(data[^1]);
                 }
                 File.WriteAllTextAsync(Path.Combine("results", $"{timestamp}-peaks.txt"), string.Join("\r\n", peaks));

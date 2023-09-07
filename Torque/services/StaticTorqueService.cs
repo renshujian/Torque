@@ -11,7 +11,8 @@ namespace Torque
     public class StaticTorqueService
     {
         public StaticTorqueServiceOptions Options { get; set; }
-        public double Threshold { get; set; }
+        public double BeginThreshold { get; set; }
+        public double EndThreshold { get; set; }
         // 初始容量存储1分钟5000hz数据
         public List<double> Results { get; } = new(60 * 5000);
         double a;
@@ -101,7 +102,7 @@ namespace Torque
                         var milliseconds = stopWatch.ElapsedMilliseconds;
                         var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
                         var torque = a * value + b;
-                        if (torque >= Threshold)
+                        if (torque >= BeginThreshold)
                         {
                             if (!recording && milliseconds - lastMilliseconds >= interval)
                             {
@@ -112,7 +113,7 @@ namespace Torque
                                 Results.Add(torque);
                             }
                         }
-                        else if (recording)
+                        else if (torque < EndThreshold && recording)
                         {
                             recording = false;
                             lastMilliseconds = milliseconds;
