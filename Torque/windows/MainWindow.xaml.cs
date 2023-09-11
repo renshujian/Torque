@@ -113,9 +113,16 @@ namespace Torque
                 }
                 File.WriteAllTextAsync(Path.Combine("results", $"{timestamp}-peaks.txt"), string.Join("\r\n", peaks));
 
-                var peakIndex = Model.PeakIndex;
-                if (peaks.Count + peakIndex < 0 || peakIndex >= peaks.Count) return;
-                var torque = peaks[peakIndex < 0 ? peaks.Count + peakIndex : peakIndex];
+                var torque = Model.PeakIndex switch
+                {
+                    "最大值" => peaks.Max(),
+                    "第二大" => peaks.OrderByDescending(it => it).ElementAtOrDefault(1),
+                    "第一个" => peaks[0],
+                    "第二个" => peaks.ElementAtOrDefault(1),
+                    "最后一个" => peaks[^1],
+                    _ => 0,
+                };
+                if (torque == 0) return;
                 // if (torque > 2 * Model.Tool!.SetTorque) return; // 丢弃扭矩测量操作失误引发的无效结果
                 var test = new Test
                 {
@@ -128,14 +135,14 @@ namespace Torque
                 };
                 Model.LastTest = test;
                 Model.Tests.Add(test);
-                if (!test.IsOK)
-                {
-                    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        Model.ClearTests();
-                    }
-                }
-                else if (Model.Tests.Count >= 12 && Model.TestsAreOK)
+                //if (!test.IsOK)
+                //{
+                //    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                //    {
+                //        Model.ClearTests();
+                //    }
+                //}
+                if (Model.Tests.Count >= 12 && Model.TestsAreOK)
                 {
                     if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
@@ -235,6 +242,15 @@ namespace Torque
             if (content is string s && double.TryParse(s.TrimEnd('%'), out var allowedDiviation))
             {
                 Model.AllowedDiviation = allowedDiviation / 100;
+            }
+        }
+
+        private void PeakIndexComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var content = ((ComboBoxItem)e.AddedItems[0]!).Content;
+            if (content is string s)
+            {
+                Model.PeakIndex = s;
             }
         }
     }

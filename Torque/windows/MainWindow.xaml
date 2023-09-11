@@ -78,7 +78,13 @@
                 <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
             </ComboBox>
             <Label Grid.Row="4">峰值索引</Label>
-            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PeakIndex}" />
+            <ComboBox Grid.Row="4" Grid.Column="1" SelectionChanged="PeakIndexComboBox_SelectionChanged">
+                <ComboBoxItem IsSelected="True">最大值</ComboBoxItem>
+                <ComboBoxItem>第二大</ComboBoxItem>
+                <ComboBoxItem>第一个</ComboBoxItem>
+                <ComboBoxItem>第二个</ComboBoxItem>
+                <ComboBoxItem>最后一个</ComboBoxItem>
+            </ComboBox>
             <Button Name="ZeroButton" Grid.Row="5" Click="ResetTorque">零点</Button>
             <Button Grid.Row="5" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
