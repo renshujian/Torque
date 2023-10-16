@@ -7,5 +7,6 @@
         public double? a { get; init; }
         public double b { get; init; }
         public double Sensitivity { get; init; } = 0.1144;
+        public long PacketsPerSecond { get; init; } = 5000;
     }
 }

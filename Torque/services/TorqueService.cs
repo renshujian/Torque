@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -65,19 +64,36 @@ namespace Torque
 
         void Read(Sampling[] samplings)
         {
-            var validPackets = 0;
-            var buffer = new byte[4];
-            var stopWatch = Stopwatch.StartNew();
+            long packetIndex = -1;
+            long ticksPerPacket = TimeSpan.TicksPerSecond / Options.PacketsPerSecond;
+            var buffer = new byte[4096];
             var sampling = samplings[0];
-            var lastTime = -sampling.Interval;
+            double sampleInterval = Options.PacketsPerSecond / sampling.Frequency;
+            double sampleAt = 0;
             while (!cts.IsCancellationRequested)
             {
                 try
                 {
-                    if (socket!.Receive(buffer) == 4 && buffer[2] == 0x0d && buffer[3] == 0x0a)
+                    int length = socket!.Receive(buffer);
+                    if (length < 1)
                     {
-                        validPackets++;
-                        var time = stopWatch.Elapsed;
+                        throw new ApplicationException("socket连接异常");
+                    }
+                    // [byte1,byte2,0x0d,0x0a]为一个有效数据，先找到第一个有效数据
+                    int beginIndex = length - 3;
+                    for (int i = 0; i < length - 1; i++)
+                    {
+                        if (buffer[i] == 0x0d && buffer[i + 1] == 0x0a)
+                        {
+                            beginIndex = i >= 2 ? i - 2 : i + 2;
+                            break;
+                        }
+                    }
+                    // 按照4字节一组处理数据
+                    for (int i = beginIndex; i < length - 3; i += 4)
+                    {
+                        packetIndex++;
+                        var time = TimeSpan.FromTicks(packetIndex * ticksPerPacket);
                         if (time > sampling.Time)
                         {
                             sampling = samplings.FirstOrDefault(it => it.Time > time, sampling);
@@ -85,35 +101,19 @@ namespace Torque
                             {
                                 // 没有下一个采样段了，结束循环
                                 OnStop?.Invoke();
-                                break;
+                                return;
+                            }
+                            else
+                            {
+                                sampleInterval = Options.PacketsPerSecond / sampling.Frequency;
                             }
                         }
-                        if (time >= lastTime + sampling.Interval)
+                        if (packetIndex >= sampleAt)
                         {
-                            lastTime = time;
-                            var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(0, 2));
+                            sampleAt += sampleInterval;
+                            var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
                             var torque = a * value + b;
                             OnData?.Invoke(time, torque);
-                        }
-                    }
-                    else
-                    {
-                        // 尝试找到符合协议的数据包尾
-                        while (!cts.IsCancellationRequested)
-                        {
-                            if (socket.Receive(buffer, 1, SocketFlags.None) < 1)
-                            {
-                                stopWatch.Stop();
-                                throw new ApplicationException("socket连接异常");
-                            }
-                            if (buffer[0] == 0x0d)
-                            {
-                                socket.Receive(buffer, 1, SocketFlags.None);
-                                if (buffer[0] == 0x0a)
-                                {
-                                    break; // 跳出当前逐字节读取数据的循环，结束else块进入下一轮主循环
-                                }
-                            }
                         }
                     }
                 }
@@ -127,11 +127,6 @@ namespace Torque
                         socket.Connect(Options.Host, Options.Port);
                     }
                 }
-            }
-            stopWatch.Stop();
-            if (validPackets == 0)
-            {
-                throw new ApplicationException("没有收到有效数据");
             }
         }
     }
