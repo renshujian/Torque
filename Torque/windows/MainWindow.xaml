@@ -125,6 +125,6 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" ZoomMode="X" TooltipPosition="Hidden" EasingFunction="{x:Null}" />
+        <lvc:CartesianChart Name="chart" Series="{Binding Series}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" />
     </DockPanel>
 </Window>

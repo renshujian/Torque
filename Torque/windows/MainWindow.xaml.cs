@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -11,6 +13,7 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using LiveChartsCore.SkiaSharpView.VisualElements;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SkiaSharp;
 
 namespace Torque
@@ -20,24 +23,27 @@ namespace Torque
     /// </summary>
     public partial class MainWindow : Window
     {
+        const long CHART_CAPACITY = 1000;
+        static readonly TimeSpanPoint NULL_POINT = new(TimeSpan.MinValue, double.MinValue);
         internal MainWindowModel Model { get; } = new();
         TorqueService TorqueService { get; }
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
         IServiceProvider sp;
-        string? resultPath;
-        StreamWriter? result;
-        ObservableCollection<TimeSpanPoint> chartValues;
-        // 4千万满足1个小时1000Hz加71小时1Hz
-        List<TimeSpanPoint> resultValues = new(40_000_000);
+        Test? currentTest;
+        BinaryWriter result = BinaryWriter.Null;
+        List<TimeSpanPoint> chartValues;
+        List<TimeSpanPoint> chartValues2 = new();
         TimeSpan lastChartAt;
         TimeSpan chartInterval = TimeSpan.FromSeconds(1);
+        TimeSpanPoint maxPoint = NULL_POINT;
+        TimeSpanPoint loosePoint = NULL_POINT;
 
         public MainWindow(TorqueServiceOptions torqueServiceOptions, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
             InitializeComponent();
             DataContext = Model;
-            chartValues = (ObservableCollection<TimeSpanPoint>)Model.Series[0].Values!;
+            chartValues = (List<TimeSpanPoint>)Model.Series[0].Values!;
             Model.Sensitivity = torqueServiceOptions.Sensitivity;
             Model.A = torqueServiceOptions.a;
             Model.B = torqueServiceOptions.b;
@@ -72,35 +78,79 @@ namespace Torque
         private void ReadTorque(object sender, RoutedEventArgs e)
         {
             if (!ValidateSamplings()) return;
-            TorqueService.Options = TorqueService.Options with
+            var testTime = DateTime.Now;
+            var resultPath = Path.Combine("results", $"{testTime:yyyyMMddHHmmss}");
+            result = new BinaryWriter(File.Create(resultPath));
+            var torqueServiceOptions = TorqueService.Options with
             {
                 Sensitivity = Model.Sensitivity,
                 a = Model.A,
                 b = Model.B,
             };
+            TorqueService.Options = torqueServiceOptions;
+            currentTest = new Test()
+            {
+                ToolId = Model.Tool.Id,
+                SetTorque = Model.Tool.SetTorque,
+                AllowedDiviation = Model.AllowedDiviation,
+                TestTime = testTime,
+                ResultPath = resultPath,
+                TorqueServiceOptions = torqueServiceOptions,
+                Samplings = Model.Samplings.OrderBy(it => it.Time).ToArray(),
+            };
             StopButton.Visibility = Visibility.Visible;
             Model.NotTesting = false;
-            resultPath = Path.Combine("results", $"{DateTime.Now:yyyyMMddHHmmss}.csv");
-            result = File.CreateText(resultPath);
-            result.WriteLine("time,torque");
-            resultValues.Clear();
             chartValues.Clear();
-            lastChartAt = TimeSpan.Zero;
+            maxPoint = NULL_POINT;
+            loosePoint = NULL_POINT;
             chart.Sections = Array.Empty<RectangularSection>();
             chart.VisualElements = Array.Empty<LabelVisual>();
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
             ResetZoom(null!, null!);
-            TorqueService.StartRead(Model.Samplings.OrderBy(it => it.Time).ToArray());
+            TorqueService.StartRead(currentTest.Samplings);
         }
 
         private void HandleData(TimeSpan time, double torque)
         {
+            result.Write(torque);
             TimeSpanPoint point = new(time, torque);
-            resultValues.Add(point);
-            result?.WriteLine($"{time},{torque}");
-            if (time - lastChartAt > chartInterval) {
-                lastChartAt = time;
-                Dispatcher.InvokeAsync(() => chartValues.Add(point));
+            chartValues2.Add(point);
+            if (chartValues2.Count > CHART_CAPACITY)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    var values = (List<TimeSpanPoint>)Model.Series[0].Values;
+                    Model.Series[0].Values = chartValues2;
+                    chartValues = chartValues2;
+                    chartValues2 = values;
+                    chartValues2.Clear();
+                    chart.CoreChart.Update();
+                    lastChartAt = time;
+                });
+            }
+            else if (time - lastChartAt > chartInterval)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    chartValues.AddRange(chartValues2);
+                    int removeCount = chartValues.Count - (int)CHART_CAPACITY;
+                    if (removeCount > 0)
+                    {
+                        chartValues.RemoveRange(0, removeCount);
+                    }
+                    chartValues2.Clear();
+                    chart.CoreChart.Update();
+                    lastChartAt = time;
+                });
+            }
+            if (torque > maxPoint.Value)
+            {
+                maxPoint = point;
+                loosePoint = NULL_POINT;
+            }
+            if (loosePoint == NULL_POINT && torque < Model.LooseForce)
+            {
+                loosePoint = point;
             }
         }
 
@@ -132,37 +182,26 @@ namespace Torque
 
         private void AddTest(double torque)
         {
-            var test = new Test
+            currentTest.RealTorque = torque;
+            currentTest.Diviation = (torque - currentTest.SetTorque) / currentTest.SetTorque;
+            Model.LastTest = currentTest;
+            Model.Tests.Add(currentTest);
+            if (!currentTest.IsOK && MessageBox.Show(this, "数据NG，是否清除数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                ToolId = Model.Tool.Id,
-                SetTorque = Model.Tool.SetTorque,
-                RealTorque = torque,
-                Diviation = (torque - Model.Tool.SetTorque) / Model.Tool.SetTorque,
-                AllowedDiviation = Model.AllowedDiviation,
-                TestTime = DateTime.Now
-            };
-            Dispatcher.InvokeAsync(() =>
+                Model.ClearTests();
+                return;
+            }
+            AppDbContext.Tests.Add(currentTest);
+            AppDbContext.SaveChanges();
+
+            if (Model.Tests.Count >= 12 && Model.TestsAreOK)
             {
-                Model.LastTest = test;
-                Model.Tests.Add(test);
-                if (!test.IsOK)
+                if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
-                    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        Model.ClearTests();
-                    }
+                    MesService.Upload(Model.Tests);
+                    Model.ClearTests();
                 }
-                else if (Model.Tests.Count >= 12 && Model.TestsAreOK)
-                {
-                    if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        AppDbContext.Tests.AddRange(Model.Tests);
-                        AppDbContext.SaveChanges();
-                        MesService.Upload(Model.Tests);
-                        Model.ClearTests();
-                    }
-                }
-            });
+            }
         }
 
         private async void StopButton_Click(object sender, RoutedEventArgs e)
@@ -174,31 +213,16 @@ namespace Torque
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.X;
             Model.NotTesting = true;
             result?.Dispose();
-            if (resultValues.Count == 0)
+            if (maxPoint == NULL_POINT)
             {
                 MessageBox.Show("没有测量数据");
                 return;
             }
-            AddTest(resultValues.Max(point => point.Value.GetValueOrDefault()));
-
-            int? looseIndex = null;
-            for (int i = resultValues.Count - 1; i >= 0 ; i--)
-            {
-                if (resultValues[i].Value < Model.LooseForce)
-                {
-                    looseIndex = i;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            if (looseIndex == null)
+            AddTest(maxPoint.Value!.Value);
+            if (loosePoint == NULL_POINT)
             {
                 return;
             }
-
-            var loosePoint = resultValues[looseIndex.Value];
             chart.Sections = new RectangularSection[]
             {
                     new RectangularSection
@@ -224,17 +248,121 @@ namespace Torque
             };
         }
 
+        private static List<TimeSpanPoint> getChartPoints(Test test, double minLimit, double maxLimit)
+        {
+            Debug.Assert(minLimit <= maxLimit);
+
+            TimeSpan lastSampleEndTime = TimeSpan.Zero;
+            double lastSampleEndOffset = 0;
+            var samplings = test.Samplings.Select(it =>
+            {
+                double sampleEndOffset = lastSampleEndOffset + (it.Time - lastSampleEndTime).TotalSeconds * it.Frequency;
+                var sample = (StartOffset: lastSampleEndOffset, EndOffset: sampleEndOffset, StartTime: lastSampleEndTime, it.Frequency);
+                lastSampleEndTime = it.Time;
+                lastSampleEndOffset = sampleEndOffset;
+                return sample;
+            }).ToArray();
+
+            long packetsPerSecond = test.TorqueServiceOptions?.PacketsPerSecond ?? 5000;
+            long ticksPerPacket = TimeSpan.TicksPerSecond / packetsPerSecond;
+            double packetCount = new FileInfo(test.ResultPath).Length / 8.0;
+            double minTick = Math.Max(minLimit, 0);
+            double maxTick = Math.Min(maxLimit, test.Samplings.Last().Time.Ticks);
+            double minOffset = getPacketOffset(minTick, test.Samplings);
+            double maxOffset = getPacketOffset(maxTick, test.Samplings);
+            double rangeCount = maxOffset - minOffset;
+            double readInterval = rangeCount / CHART_CAPACITY;
+            if (readInterval > 10)
+            {
+                using var handle = File.OpenHandle(test.ResultPath);
+                var buffer = new byte[8];
+                var chartPoints = new List<TimeSpanPoint>((int)CHART_CAPACITY);
+                for (double i = minOffset; i <= maxOffset; i += readInterval)
+                {
+                    long packetOffset = (long)i;
+                    var sampling = samplings.First(it => it.StartOffset <= packetOffset &&  it.EndOffset >= packetOffset);
+                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((packetOffset - sampling.StartOffset) / sampling.Frequency);
+                    RandomAccess.Read(handle, buffer, packetOffset * 8);
+                    chartPoints.Add(new(time, BitConverter.ToDouble(buffer)));
+                }
+                return chartPoints;
+            }
+            else if (readInterval < 1.2)
+            {
+                long startOffset = (long)minOffset;
+                long endOffset = (long)maxOffset;
+                using var reader = new BinaryReader(File.OpenRead(test.ResultPath));
+                reader.BaseStream.Position = startOffset * 8;
+                var chartPoints = new List<TimeSpanPoint>((int)rangeCount + 1);
+                for (long i = startOffset; i <= endOffset; i++)
+                {
+                    var sampling = samplings.First(it => it.StartOffset <= i && it.EndOffset >= i);
+                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((i - sampling.StartOffset) / sampling.Frequency);
+                    chartPoints.Add(new(time, reader.ReadDouble()));
+                }
+                return chartPoints;
+            }
+            else
+            {
+                long startOffset = (long)minOffset;
+                using var stream = File.OpenRead(test.ResultPath);
+                stream.Position = startOffset * 8;
+                using var MemoryOwner = MemoryPool<byte>.Shared.Rent(((int)rangeCount + 1) * 8);
+                int readBytes = 0;
+                int loopCount = 0;
+                while (readBytes < MemoryOwner.Memory.Length && loopCount < 100)
+                {
+                    readBytes += stream.Read(MemoryOwner.Memory.Slice(readBytes).Span);
+                }
+                var chartPoints = new List<TimeSpanPoint>((int)CHART_CAPACITY);
+                for (double i = startOffset; i <= maxOffset; i += readInterval)
+                {
+                    long packetOffset = (long)i;
+                    var sampling = samplings.First(it => it.StartOffset <= packetOffset && it.EndOffset >= packetOffset);
+                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((packetOffset - sampling.StartOffset) / sampling.Frequency);
+                    var buffer = MemoryOwner.Memory.Slice((int)(packetOffset - startOffset) * 8, 8);
+                    chartPoints.Add(new(time, BitConverter.ToDouble(buffer.Span)));
+                }
+                return chartPoints;
+            }
+        }
+
+        private static double getPacketOffset(double tick, Sampling[] samplings)
+        {
+            Debug.Assert(tick >= 0);
+            Debug.Assert(samplings.Last().Time.Ticks >= tick);
+            long lastTick = 0;
+            double packetOffset = 0;
+            foreach (var sampling in samplings)
+            {
+                if (sampling.Time.Ticks >= tick)
+                {
+                    packetOffset += (tick - lastTick) * sampling.Frequency / TimeSpan.TicksPerSecond;
+                    return packetOffset;
+                }
+                else
+                {
+                    packetOffset += (sampling.Time.Ticks - lastTick) * sampling.Frequency / TimeSpan.TicksPerSecond;
+                    lastTick = sampling.Time.Ticks;
+                }
+            }
+            return packetOffset;
+        }
+
         private void ZoomChartData(object sender, RoutedEventArgs e)
         {
+            if (currentTest == null) return;
+            var minLimit = Model.XAxes[0].MinLimit;
+            if (minLimit == null) return;
+            var maxLimit = Model.XAxes[0].MaxLimit;
+            if (maxLimit == null) return;
             try
             {
-                int start = resultValues.FindIndex(it => it.TimeSpan.Ticks > Model.XAxes[0].MinLimit);
-                int end = resultValues.FindIndex(start, it => it.TimeSpan.Ticks > Model.XAxes[0].MaxLimit);
-                Model.Series[0].Values = resultValues.GetRange(start, end - start);
+                Model.Series[0].Values = getChartPoints(currentTest, minLimit.Value, maxLimit.Value);
             }
-            catch
+            catch(Exception ex)
             {
-                Model.Series[0].Values = chartValues;
+                Debug.WriteLine(ex);
             }
         }
 
@@ -310,8 +438,6 @@ namespace Torque
         {
             if (MessageBox.Show(this, "是否上传并清除当前数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                AppDbContext.Tests.AddRange(Model.Tests);
-                AppDbContext.SaveChanges();
                 MesService.Upload(Model.Tests);
                 Model.ClearTests();
             }

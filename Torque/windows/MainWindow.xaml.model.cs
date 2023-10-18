@@ -4,6 +4,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -96,7 +97,7 @@ namespace Torque
         {
             new LineSeries<TimeSpanPoint>
             {
-                Values = new ObservableCollection<TimeSpanPoint>(),
+                Values = new List<TimeSpanPoint>(),
                 Fill = null,
                 Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 1),
                 GeometrySize = 5,
