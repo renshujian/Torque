@@ -101,12 +101,16 @@ namespace Torque
             StopButton.Visibility = Visibility.Visible;
             Model.NotTesting = false;
             chartValues.Clear();
+            chartValues2.Clear();
+            lastChartAt = TimeSpan.Zero;
             maxPoint = NULL_POINT;
             loosePoint = NULL_POINT;
             chart.Sections = Array.Empty<RectangularSection>();
             chart.VisualElements = Array.Empty<LabelVisual>();
             chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.None;
-            ResetZoom(null!, null!);
+            Model.Series[0].Values = chartValues;
+            Model.XAxes[0].MinLimit = null;
+            Model.XAxes[0].MaxLimit = null;
             TorqueService.StartRead(currentTest.Samplings);
         }
 
@@ -184,6 +188,7 @@ namespace Torque
         {
             currentTest.RealTorque = torque;
             currentTest.Diviation = (torque - currentTest.SetTorque) / currentTest.SetTorque;
+            // TODO: 合并LastTest和currentTest
             Model.LastTest = currentTest;
             Model.Tests.Add(currentTest);
             if (!currentTest.IsOK && MessageBox.Show(this, "数据NG，是否清除数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
@@ -250,26 +255,35 @@ namespace Torque
 
         private static List<TimeSpanPoint> getChartPoints(Test test, double minLimit, double maxLimit)
         {
-            Debug.Assert(minLimit <= maxLimit);
+            Debug.Assert(minLimit < maxLimit);
 
+            // 将test.Samplings处理成方便time和offset相互转化的数据结构
             TimeSpan lastSampleEndTime = TimeSpan.Zero;
             double lastSampleEndOffset = 0;
             var samplings = test.Samplings.Select(it =>
             {
                 double sampleEndOffset = lastSampleEndOffset + (it.Time - lastSampleEndTime).TotalSeconds * it.Frequency;
-                var sample = (StartOffset: lastSampleEndOffset, EndOffset: sampleEndOffset, StartTime: lastSampleEndTime, it.Frequency);
-                lastSampleEndTime = it.Time;
-                lastSampleEndOffset = sampleEndOffset;
+                var sample = (StartOffset: lastSampleEndOffset, EndOffset: sampleEndOffset, StartTime: lastSampleEndTime, EndTime: it.Time, it.Frequency);
+                lastSampleEndTime = sample.EndTime;
+                lastSampleEndOffset = sample.EndOffset;
                 return sample;
             }).ToArray();
+            double timeToOffset(TimeSpan time)
+            {
+                var sampling = samplings.First(it => it.StartTime <=  time && it.EndTime >= time);
+                return sampling.StartOffset + (time - sampling.StartTime).TotalSeconds * sampling.Frequency;
+            }
+            TimeSpan offsetToTime(long offset)
+            {
+                var sampling = samplings.First(it => it.StartOffset <= offset && it.EndOffset >= offset);
+                return sampling.StartTime + TimeSpan.FromSeconds((offset - sampling.StartOffset) / sampling.Frequency);
+            }
 
-            long packetsPerSecond = test.TorqueServiceOptions?.PacketsPerSecond ?? 5000;
-            long ticksPerPacket = TimeSpan.TicksPerSecond / packetsPerSecond;
             double packetCount = new FileInfo(test.ResultPath).Length / 8.0;
             double minTick = Math.Max(minLimit, 0);
             double maxTick = Math.Min(maxLimit, test.Samplings.Last().Time.Ticks);
-            double minOffset = getPacketOffset(minTick, test.Samplings);
-            double maxOffset = getPacketOffset(maxTick, test.Samplings);
+            double minOffset = timeToOffset(TimeSpan.FromTicks((long)minTick));
+            double maxOffset = Math.Min(timeToOffset(TimeSpan.FromTicks((long)maxTick)), packetCount - 1);
             double rangeCount = maxOffset - minOffset;
             double readInterval = rangeCount / CHART_CAPACITY;
             if (readInterval > 10)
@@ -280,13 +294,12 @@ namespace Torque
                 for (double i = minOffset; i <= maxOffset; i += readInterval)
                 {
                     long packetOffset = (long)i;
-                    var sampling = samplings.First(it => it.StartOffset <= packetOffset &&  it.EndOffset >= packetOffset);
-                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((packetOffset - sampling.StartOffset) / sampling.Frequency);
                     RandomAccess.Read(handle, buffer, packetOffset * 8);
-                    chartPoints.Add(new(time, BitConverter.ToDouble(buffer)));
+                    chartPoints.Add(new(offsetToTime(packetOffset), BitConverter.ToDouble(buffer)));
                 }
                 return chartPoints;
             }
+            // readInterval不大于10说明rangeCount在int32的范围内
             else if (readInterval < 1.2)
             {
                 long startOffset = (long)minOffset;
@@ -296,9 +309,7 @@ namespace Torque
                 var chartPoints = new List<TimeSpanPoint>((int)rangeCount + 1);
                 for (long i = startOffset; i <= endOffset; i++)
                 {
-                    var sampling = samplings.First(it => it.StartOffset <= i && it.EndOffset >= i);
-                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((i - sampling.StartOffset) / sampling.Frequency);
-                    chartPoints.Add(new(time, reader.ReadDouble()));
+                    chartPoints.Add(new(offsetToTime(i), reader.ReadDouble()));
                 }
                 return chartPoints;
             }
@@ -307,46 +318,23 @@ namespace Torque
                 long startOffset = (long)minOffset;
                 using var stream = File.OpenRead(test.ResultPath);
                 stream.Position = startOffset * 8;
-                using var MemoryOwner = MemoryPool<byte>.Shared.Rent(((int)rangeCount + 1) * 8);
+                int byteCount = ((int)rangeCount + 1) * 8;
+                using var MemoryOwner = MemoryPool<byte>.Shared.Rent(byteCount);
                 int readBytes = 0;
-                int loopCount = 0;
-                while (readBytes < MemoryOwner.Memory.Length && loopCount < 100)
+                while (readBytes < byteCount)
                 {
                     readBytes += stream.Read(MemoryOwner.Memory.Slice(readBytes).Span);
                 }
                 var chartPoints = new List<TimeSpanPoint>((int)CHART_CAPACITY);
+                // TODO: 不清楚会不会出现超出byteCount的情况
                 for (double i = startOffset; i <= maxOffset; i += readInterval)
                 {
                     long packetOffset = (long)i;
-                    var sampling = samplings.First(it => it.StartOffset <= packetOffset && it.EndOffset >= packetOffset);
-                    TimeSpan time = sampling.StartTime + TimeSpan.FromSeconds((packetOffset - sampling.StartOffset) / sampling.Frequency);
                     var buffer = MemoryOwner.Memory.Slice((int)(packetOffset - startOffset) * 8, 8);
-                    chartPoints.Add(new(time, BitConverter.ToDouble(buffer.Span)));
+                    chartPoints.Add(new(offsetToTime(packetOffset), BitConverter.ToDouble(buffer.Span)));
                 }
                 return chartPoints;
             }
-        }
-
-        private static double getPacketOffset(double tick, Sampling[] samplings)
-        {
-            Debug.Assert(tick >= 0);
-            Debug.Assert(samplings.Last().Time.Ticks >= tick);
-            long lastTick = 0;
-            double packetOffset = 0;
-            foreach (var sampling in samplings)
-            {
-                if (sampling.Time.Ticks >= tick)
-                {
-                    packetOffset += (tick - lastTick) * sampling.Frequency / TimeSpan.TicksPerSecond;
-                    return packetOffset;
-                }
-                else
-                {
-                    packetOffset += (sampling.Time.Ticks - lastTick) * sampling.Frequency / TimeSpan.TicksPerSecond;
-                    lastTick = sampling.Time.Ticks;
-                }
-            }
-            return packetOffset;
         }
 
         private void ZoomChartData(object sender, RoutedEventArgs e)
@@ -368,9 +356,10 @@ namespace Torque
 
         private void ResetZoom(object sender, RoutedEventArgs e)
         {
-            Model.Series[0].Values = chartValues;
-            Model.XAxes[0].MinLimit = null;
-            Model.XAxes[0].MaxLimit = null;
+            if (currentTest == null) return;
+            Model.XAxes[0].MinLimit = 0;
+            Model.XAxes[0].MaxLimit = currentTest.Samplings.Last().Time.Ticks;
+            ZoomChartData(null!, null!);
         }
 
         private void ClearTests(object sender, RoutedEventArgs e)
@@ -468,6 +457,11 @@ namespace Torque
             if (samplings.Any(it => it.Frequency <= 0))
             {
                 MessageBox.Show(this, "采样频率应大于0");
+                return false;
+            }
+            if (samplings.Any(it => it.Frequency > TorqueService.Options.PacketsPerSecond))
+            {
+                MessageBox.Show(this, $"采样频率应小于等于{TorqueService.Options.PacketsPerSecond}");
                 return false;
             }
             if (samplings.DistinctBy(it => it.Time).Count() < samplings.Count)
