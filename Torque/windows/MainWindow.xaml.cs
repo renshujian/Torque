@@ -1,19 +1,21 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using LiveChartsCore.SkiaSharpView.VisualElements;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Microsoft.Win32;
 using SkiaSharp;
 
 namespace Torque
@@ -270,7 +272,7 @@ namespace Torque
             }).ToArray();
             double timeToOffset(TimeSpan time)
             {
-                var sampling = samplings.First(it => it.StartTime <=  time && it.EndTime >= time);
+                var sampling = samplings.First(it => it.StartTime <= time && it.EndTime >= time);
                 return sampling.StartOffset + (time - sampling.StartTime).TotalSeconds * sampling.Frequency;
             }
             TimeSpan offsetToTime(long offset)
@@ -348,7 +350,7 @@ namespace Torque
             {
                 Model.Series[0].Values = getChartPoints(currentTest, minLimit.Value, maxLimit.Value);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Debug.WriteLine(ex);
             }
@@ -470,6 +472,75 @@ namespace Torque
                 return false;
             }
             return true;
+        }
+
+        private void SaveCsv(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.DataContext is Test test)
+            {
+                var dialog = new SaveFileDialog()
+                {
+                    FileName = Path.GetFileNameWithoutExtension(test.ResultPath),
+                    DefaultExt = "csv",
+                    Filter = "CSV|*.csv",
+                };
+                if (dialog.ShowDialog() == true)
+                {
+                    var writer = File.CreateText(dialog.FileName);
+                    writer.WriteLine("time,value");
+                    var reader = new BinaryReader(File.OpenRead(test.ResultPath));
+
+                    var progress = new ProgressDialog();
+                    progress.bar.Maximum = reader.BaseStream.Length;
+                    var timer = new DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(500)
+                    };
+                    timer.Tick += (_, _) => progress.bar.Value = reader.BaseStream.Position;
+                    timer.Start();
+
+                    using var cts = new CancellationTokenSource();
+                    Task.Run(() =>
+                    {
+                        var time = TimeSpan.Zero;
+                        var sampling = test.Samplings[0];
+                        var interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
+                        try
+                        {
+                            while (!cts.IsCancellationRequested)
+                            {
+                                var value = reader.ReadDouble();
+                                writer.WriteLine($"{time},{value}");
+                                if (time > sampling.Time)
+                                {
+                                    sampling = test.Samplings.First(it => it.Time > time);
+                                    interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
+                                }
+                                time += interval;
+                            }
+                        }
+                        catch (EndOfStreamException)
+                        {
+                            Dispatcher.InvokeAsync(() => progress.DialogResult = true);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            Dispatcher.InvokeAsync(() => progress.DialogResult = true);
+                        }
+                        finally
+                        {
+                            timer.Stop();
+                            reader.Dispose();
+                            writer.Dispose();
+                        }
+                    }, cts.Token);
+
+                    if (progress.ShowDialog() != true)
+                    {
+                        cts.Cancel();
+                    }
+                }
+            }
         }
     }
 }

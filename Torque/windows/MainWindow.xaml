@@ -109,6 +109,16 @@
             </DataGrid>
         </Grid>
         <ListView DockPanel.Dock="Bottom" Height="200" ItemsSource="{Binding Tests}" Margin="5">
+            <ListView.Resources>
+                <ContextMenu x:Key="ItemContextMenu">
+                    <MenuItem Header="保存采样数据为CSV" Click="SaveCsv" />
+                </ContextMenu>
+            </ListView.Resources>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="ContextMenu" Value="{StaticResource ItemContextMenu}" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="序号" Width="30">
