@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,15 +64,15 @@ namespace Torque
         {
             Dispatcher.Invoke(() =>
             {
-                MessageBox.Show(e.ToString(), e.Message, MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(e.Message, e.GetType().FullName, MessageBoxButton.OK, MessageBoxImage.Error);
             });
         }
 
-        private bool HandleSocketException(Exception e)
+        private bool HandleSocketException(SocketException e)
         {
             return Dispatcher.Invoke(() =>
             {
-                if (MessageBox.Show(e.ToString(), "传感器连接异常，是否重连？", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                if (MessageBox.Show($"({e.ErrorCode}){e.Message}", "传感器连接异常，是否重连？", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
                     return true;
                 }
@@ -135,14 +136,14 @@ namespace Torque
                 };
                 Model.LastTest = test;
                 Model.Tests.Add(test);
-                //if (!test.IsOK)
-                //{
-                //    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                //    {
-                //        Model.ClearTests();
-                //    }
-                //}
-                if (Model.Tests.Count >= 12 && Model.TestsAreOK)
+                if (!test.IsOK)
+                {
+                    if (MessageBox.Show(this, "数据NG，是否重新测量", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        Model.ClearTests();
+                    }
+                }
+                else if (Model.Tests.Count >= 12 && Model.TestsAreOK)
                 {
                     if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
