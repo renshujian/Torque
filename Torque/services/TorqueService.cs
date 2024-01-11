@@ -9,7 +9,16 @@ namespace Torque
 {
     public class TorqueService
     {
-        public TorqueServiceOptions Options { get; set; }
+        TorqueServiceOptions options;
+        public TorqueServiceOptions Options {
+            get => options;
+            set
+            {
+                options = value;
+                a = value.a ?? 10 * 1000 / value.Sensitivity / 248 / 65536;
+                b = value.b;
+            }
+        }
         double a;
         double b;
         Socket? socket;
@@ -24,8 +33,6 @@ namespace Torque
         public TorqueService(TorqueServiceOptions options)
         {
             Options = options;
-            a = options.a ?? 10 * 1000 / options.Sensitivity / 248 / 65536;
-            b = options.b;
         }
 
         public Task Zero()

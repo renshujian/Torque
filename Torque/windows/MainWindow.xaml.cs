@@ -47,7 +47,6 @@ namespace Torque
             DataContext = Model;
             chartValues = (List<TimeSpanPoint>)Model.Series[0].Values!;
             Model.Sensitivity = torqueServiceOptions.Sensitivity;
-            Model.A = torqueServiceOptions.a;
             Model.B = torqueServiceOptions.b;
             // TODO: 将TorqueServie从窗口属性中移除，在开始测量时构建（如何停止？）
             TorqueService = new TorqueService(torqueServiceOptions);
@@ -86,7 +85,6 @@ namespace Torque
             var torqueServiceOptions = TorqueService.Options with
             {
                 Sensitivity = Model.Sensitivity,
-                a = Model.A,
                 b = Model.B,
             };
             TorqueService.Options = torqueServiceOptions;

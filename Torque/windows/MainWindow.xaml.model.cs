@@ -58,17 +58,6 @@ namespace Torque
             }
         }
 
-        double? a;
-        public double? A
-        {
-            get => a;
-            set
-            {
-                a = value;
-                OnPropertyChanged();
-            }
-        }
-
         double b;
         public double B
         {
