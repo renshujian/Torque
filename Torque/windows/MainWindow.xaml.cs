@@ -73,6 +73,8 @@ namespace Torque
             {
                 Model.B = -TorqueService.A * TorqueService.GetValue();
                 Model.ClearTests();
+                currentTest = null;
+                ResetChart();
             }
         }
 
@@ -100,6 +102,12 @@ namespace Torque
             };
             StopButton.Visibility = Visibility.Visible;
             Model.NotTesting = false;
+            ResetChart();
+            TorqueService.StartRead(currentTest.Samplings);
+        }
+
+        private void ResetChart()
+        {
             chartValues.Clear();
             chartValues2.Clear();
             lastChartAt = TimeSpan.Zero;
@@ -111,7 +119,6 @@ namespace Torque
             Model.Series[0].Values = chartValues;
             Model.XAxes[0].MinLimit = null;
             Model.XAxes[0].MaxLimit = null;
-            TorqueService.StartRead(currentTest.Samplings);
         }
 
         private void HandleData(TimeSpan time, double torque)
@@ -194,14 +201,7 @@ namespace Torque
             AppDbContext.Tests.Add(currentTest);
             AppDbContext.SaveChanges();
 
-            if (Model.Tests.Count >= 12 && Model.TestsAreOK)
-            {
-                if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                {
-                    MesService.Upload(Model.Tests);
-                    Model.ClearTests();
-                }
-            }
+            SaveCsv(currentTest, $"{currentTest.ResultPath}.csv");
         }
 
         private async void StopButton_Click(object sender, RoutedEventArgs e)
@@ -471,60 +471,65 @@ namespace Torque
                 };
                 if (dialog.ShowDialog() == true)
                 {
-                    var writer = File.CreateText(dialog.FileName);
-                    writer.WriteLine("time,value");
-                    var reader = new BinaryReader(File.OpenRead(test.ResultPath));
+                    SaveCsv(test, dialog.FileName);
+                }
+            }
+        }
 
-                    var progress = new ProgressDialog();
-                    progress.bar.Maximum = reader.BaseStream.Length;
-                    var timer = new DispatcherTimer
-                    {
-                        Interval = TimeSpan.FromMilliseconds(500)
-                    };
-                    timer.Tick += (_, _) => progress.bar.Value = reader.BaseStream.Position;
-                    timer.Start();
+        private void SaveCsv(Test test, string fileName)
+        {
+            var writer = File.CreateText(fileName);
+            writer.WriteLine("time,value");
+            var reader = new BinaryReader(File.OpenRead(test.ResultPath));
 
-                    using var cts = new CancellationTokenSource();
-                    Task.Run(() =>
-                    {
-                        var time = TimeSpan.Zero;
-                        var sampling = test.Samplings[0];
-                        var interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
-                        try
-                        {
-                            while (!cts.IsCancellationRequested)
-                            {
-                                var value = reader.ReadDouble();
-                                writer.WriteLine($"{time},{value}");
-                                if (time > sampling.Time)
-                                {
-                                    sampling = test.Samplings.First(it => it.Time > time);
-                                    interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
-                                }
-                                time += interval;
-                            }
-                        }
-                        catch (EndOfStreamException)
-                        {
-                            Dispatcher.InvokeAsync(() => progress.DialogResult = true);
-                        }
-                        catch (InvalidOperationException)
-                        {
-                            Dispatcher.InvokeAsync(() => progress.DialogResult = true);
-                        }
-                        finally
-                        {
-                            timer.Stop();
-                            reader.Dispose();
-                            writer.Dispose();
-                        }
-                    }, cts.Token);
+            var progress = new ProgressDialog();
+            progress.bar.Maximum = reader.BaseStream.Length;
+            var timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            timer.Tick += (_, _) => progress.bar.Value = reader.BaseStream.Position;
+            timer.Start();
 
-                    if (progress.ShowDialog() != true)
+            using var cts = new CancellationTokenSource();
+            Task.Run(() =>
+            {
+                var time = TimeSpan.Zero;
+                var sampling = test.Samplings[0];
+                var interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
+                try
+                {
+                    while (!cts.IsCancellationRequested)
                     {
-                        cts.Cancel();
+                        var value = reader.ReadDouble();
+                        writer.WriteLine($"{time},{value}");
+                        if (time > sampling.Time)
+                        {
+                            sampling = test.Samplings.First(it => it.Time > time);
+                            interval = TimeSpan.FromSeconds(1 / sampling.Frequency);
+                        }
+                        time += interval;
                     }
                 }
+                catch (EndOfStreamException)
+                {
+                    Dispatcher.InvokeAsync(() => progress.DialogResult = true);
+                }
+                catch (InvalidOperationException)
+                {
+                    Dispatcher.InvokeAsync(() => progress.DialogResult = true);
+                }
+                finally
+                {
+                    timer.Stop();
+                    reader.Dispose();
+                    writer.Dispose();
+                }
+            }, cts.Token);
+
+            if (progress.ShowDialog() != true)
+            {
+                cts.Cancel();
             }
         }
     }
