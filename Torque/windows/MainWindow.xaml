@@ -81,7 +81,7 @@
             <TextBlock Grid.Row="3" Grid.Column="1" Text="kN" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 2 5" />
             <Label Grid.Row="4">灵敏度</Label>
             <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Sensitivity}" IsEnabled="{Binding NotTesting}" />
-            <Label Grid.Row="5">量程</Label>
+            <Label Grid.Row="5">量程偏移</Label>
             <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding B}" IsEnabled="{Binding NotTesting}" />
             <Label Grid.Row="6">允许偏倚</Label>
             <ComboBox Grid.Row="6" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged" IsEnabled="{Binding NotTesting}">
@@ -89,7 +89,7 @@
                 <ComboBoxItem>10%</ComboBoxItem>
                 <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
             </ComboBox>
-            <Button Grid.Row="7" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="7" Click="ResetTorque" IsEnabled="{Binding NotTesting}">清除数据</Button>
             <Button Grid.Row="7" Grid.Column="1" Click="ReadTorque">
                 <Button.IsEnabled>
                     <Binding Path="Tool" Converter="{StaticResource ObjectBoolConverter}"/>

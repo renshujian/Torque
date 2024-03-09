@@ -67,11 +67,11 @@ namespace Torque
             Directory.CreateDirectory("results");
         }
 
-        private async void ResetTorque(object sender, RoutedEventArgs e)
+        private void ResetTorque(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("要标定传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (MessageBox.Show("要标定量程偏移并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                await TorqueService.Zero();
+                Model.B = -TorqueService.A * TorqueService.GetValue();
                 Model.ClearTests();
             }
         }
@@ -123,7 +123,7 @@ namespace Torque
             {
                 Dispatcher.Invoke(() =>
                 {
-                    var values = (List<TimeSpanPoint>)Model.Series[0].Values;
+                    var values = (List<TimeSpanPoint>)Model.Series[0].Values!;
                     Model.Series[0].Values = chartValues2;
                     chartValues = chartValues2;
                     chartValues2 = values;
@@ -191,11 +191,6 @@ namespace Torque
             // TODO: 合并LastTest和currentTest
             Model.LastTest = currentTest;
             Model.Tests.Add(currentTest);
-            if (!currentTest.IsOK && MessageBox.Show(this, "数据NG，是否清除数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-            {
-                Model.ClearTests();
-                return;
-            }
             AppDbContext.Tests.Add(currentTest);
             AppDbContext.SaveChanges();
 
@@ -360,14 +355,6 @@ namespace Torque
             Model.XAxes[0].MinLimit = 0;
             Model.XAxes[0].MaxLimit = currentTest.Samplings.Last().Time.Ticks;
             ZoomChartData(null!, null!);
-        }
-
-        private void ClearTests(object sender, RoutedEventArgs e)
-        {
-            if (MessageBox.Show("要清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-            {
-                Model.ClearTests();
-            }
         }
 
         private void OpenTestsViewer(object sender, RoutedEventArgs e)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -12,15 +13,16 @@ namespace Torque
         TorqueServiceOptions options;
         public TorqueServiceOptions Options {
             get => options;
+            [MemberNotNull("options")]
             set
             {
                 options = value;
-                a = value.a ?? 10 * 1000 / value.Sensitivity / 248 / 65536;
-                b = value.b;
+                A = value.a ?? 10 * 1000 / value.Sensitivity / 248 / 65536;
+                B = value.b;
             }
         }
-        double a;
-        double b;
+        public double A { get; private set; }
+        public double B { get; private set; }
         Socket? socket;
         CancellationTokenSource cts = new();
         Task task = Task.CompletedTask;
@@ -35,9 +37,36 @@ namespace Torque
             Options = options;
         }
 
-        public Task Zero()
+        public short GetValue()
         {
-            return Task.CompletedTask;
+            using var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            socket.ReceiveTimeout = 3000;
+            socket.Connect(Options.Host, Options.Port);
+
+            // TODO: 这里复制了Read的部分代码来从流中提取有效数据。应该重构出Decode函数
+            var buffer = new byte[16];
+            int length = socket.Receive(buffer);
+            if (length < 4)
+            {
+                throw new ApplicationException("socket连接异常");
+            }
+
+            // [byte1,byte2,0x0d,0x0a]为一个有效数据，先找到第一个有效数据
+            int? beginIndex = null;
+            for (int i = 0; i < length - 1; i++)
+            {
+                if (buffer[i] == 0x0d && buffer[i + 1] == 0x0a)
+                {
+                    beginIndex = i >= 2 ? i - 2 : i + 2;
+                    break;
+                }
+            }
+            if (beginIndex == null)
+            {
+                throw new ApplicationException("没有收到有效数据");
+            }
+
+            return BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(beginIndex.Value, 2));
         }
 
         public void StartRead(Sampling[] samplings)
@@ -119,7 +148,7 @@ namespace Torque
                         {
                             sampleAt += sampleInterval;
                             var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
-                            var torque = a * value + b;
+                            var torque = A * value + B;
                             OnData?.Invoke(time, torque);
                         }
                     }
