@@ -11,6 +11,7 @@
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
         <local:IndexConverter x:Key="IndexConverter"/>
+        <local:TickStringConverter x:Key="TickStringConverter" />
     </Window.Resources>
     <DockPanel>
         <Menu DockPanel.Dock="Top">
@@ -97,8 +98,8 @@
                 开始测量
             </Button>
             <Button Name="StopButton" Grid.Row="7" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <TextBox Grid.Row="8" Text="{Binding XAxes[0].MinLimit}" IsEnabled="{Binding NotTesting}" />
-            <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding XAxes[0].MaxLimit}" IsEnabled="{Binding NotTesting}" />
+            <TextBox Grid.Row="8" Text="{Binding XAxes[0].MinLimit, Converter={StaticResource TickStringConverter}}" IsEnabled="{Binding NotTesting}" />
+            <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding XAxes[0].MaxLimit, Converter={StaticResource TickStringConverter}}" IsEnabled="{Binding NotTesting}" />
             <Button Grid.Row="9" Click="ZoomChartData" IsEnabled="{Binding NotTesting}">缩放图表</Button>
             <Button Grid.Row="9" Grid.Column="1" Click="ResetZoom" IsEnabled="{Binding NotTesting}">恢复图表</Button>
             <DataGrid Grid.Row="10" Grid.ColumnSpan="2" ItemsSource="{Binding Samplings}" AutoGenerateColumns="False" FontSize="16">
