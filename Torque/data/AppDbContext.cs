@@ -16,6 +16,8 @@ namespace Torque
         {
             base.OnModelCreating(builder);
             builder.Entity<Test>().HasKey(t => t.TestTime);
+            builder.Entity<Test>().HasIndex(t => t.ToolId);
+            builder.Entity<Test>().Property(t => t.AllowedDiviation);
             builder.Entity<User>().HasData(
                 new User("查看") { NormalizedUserName = "查看", Id = "3f2b0240-bafb-4788-bc3e-e913b50b6564", PasswordHash = "AQAAAAEAACcQAAAAEESTP1NCOm16LcUTzHkXrLVmnYUoH6Pu/bGgjLZTfxrGXCsJ4e6HLU7h/CILPlmEeg==" },
                 new User("操作员") { NormalizedUserName = "操作员", Id = "d2b7766c-c245-4ebd-bde3-78b8a6dd134d", PasswordHash = "AQAAAAEAACcQAAAAECPdh958USpp1F04Gqz4SV0YQlpCuvAYRtBvWZVj2FuI1En/bUYZYy7aOT1EwrZtRQ==" },
