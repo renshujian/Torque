@@ -26,6 +26,7 @@ namespace Torque
             var root = ConfigureServices(config);
             var scope = root.CreateScope();
             var sp = scope.ServiceProvider;
+            sp.GetRequiredService<AppDbContext>().Database.Migrate();
             var login = sp.GetRequiredService<Login>();
             var main = sp.GetRequiredService<MainWindow>();
             if (login.ShowDialog() == true)

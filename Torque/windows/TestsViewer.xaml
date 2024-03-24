@@ -18,7 +18,7 @@
             <Label>-</Label>
             <DatePicker Name="ToDatePicker"/>
             <Button Margin="10 0" Padding="10 0" Click="ClearButton_Click">清除条件</Button>
-            <Button Padding="10 0" Click="QueryButton_Click">查询数据</Button>
+            <Button Padding="10 0" Click="QueryButton_Click" IsDefault="True">查询数据</Button>
             <Button Margin="10 0" Padding="10 0" Click="ExportButton_Click">导出数据</Button>
         </StackPanel>
         <ListView Name="listView">
