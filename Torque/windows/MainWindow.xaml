@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Torque" d:DataContext="{d:DesignInstance Type=local:MainWindowModel}"
         mc:Ignorable="d"
-        Title="紧固工具校准" Height="450" Width="900">
+        Title="紧固工具校准" Height="450" Width="960">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -113,6 +113,7 @@
                     <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
                     <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
                     <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
+                    <GridViewColumn Header="允许偏倚" DisplayMemberBinding="{Binding AllowedDiviation, StringFormat={}{0:p0}}" Width="60"/>
                     <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
                     <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
                     <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>

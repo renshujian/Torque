@@ -6,16 +6,38 @@
         xmlns:local="clr-namespace:Torque"
         mc:Ignorable="d"
         Title="本地历史数据" Height="450" Width="800">
-    <ListView Name="listView">
-        <ListView.View>
-            <GridView>
-                <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
-                <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
-                <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
-                <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
-                <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
-                <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>
-            </GridView>
-        </ListView.View>
-    </ListView>
+    <Window.Resources>
+        <local:IndexConverter x:Key="IndexConverter"/>
+    </Window.Resources>
+    <DockPanel>
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+            <Label>电批编码:</Label>
+            <TextBox Name="ToolIdBox" Width="120"/>
+            <Label>检测时间:</Label>
+            <DatePicker Name="FromDatePicker"/>
+            <Label>-</Label>
+            <DatePicker Name="ToDatePicker"/>
+            <Button Margin="10 0" Padding="10 0" Click="ClearButton_Click">清除条件</Button>
+            <Button Padding="10 0" Click="QueryButton_Click">查询数据</Button>
+            <Button Margin="10 0" Padding="10 0" Click="ExportButton_Click">导出数据</Button>
+        </StackPanel>
+        <ListView Name="listView">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="序号" Width="30">
+                        <GridViewColumn.DisplayMemberBinding>
+                            <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Converter="{StaticResource IndexConverter}"/>
+                        </GridViewColumn.DisplayMemberBinding>
+                    </GridViewColumn>
+                    <GridViewColumn Header="电批编码" DisplayMemberBinding="{Binding ToolId}" Width="120"/>
+                    <GridViewColumn Header="目标扭矩" DisplayMemberBinding="{Binding SetTorque, StringFormat={}{0:f2}}" Width="80"/>
+                    <GridViewColumn Header="实测扭矩" DisplayMemberBinding="{Binding RealTorque, StringFormat={}{0:f2}}" Width="80"/>
+                    <GridViewColumn Header="允许偏倚" DisplayMemberBinding="{Binding AllowedDiviation, StringFormat={}{0:p0}}" Width="60"/>
+                    <GridViewColumn Header="偏倚" DisplayMemberBinding="{Binding Diviation, StringFormat={}{0:p0}}" Width="60"/>
+                    <GridViewColumn Header="结果" DisplayMemberBinding="{Binding IsPass}" Width="60"/>
+                    <GridViewColumn Header="检测时间" DisplayMemberBinding="{Binding TestTime, StringFormat={}{0:s}}" Width="140"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </DockPanel>
 </Window>
