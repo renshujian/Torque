@@ -72,9 +72,17 @@ namespace Torque
             Results.Clear();
             var validPackets = 0;
             var buffer = new byte[256];
+
             var stopWatch = Stopwatch.StartNew();
-            long lastMilliseconds = -interval;
+            long currentMilliseconds = 0;
+            long lastEndMilliseconds = -interval;
+            long beginMilliseconds = 0;
+            double torque = -1;
             var recording = false;
+            Func<bool> ShouldEnd = Options.EndTimeSpan > TimeSpan.Zero ? 
+                () => currentMilliseconds - beginMilliseconds >= Options.EndTimeSpan.TotalMilliseconds : 
+                () => torque < EndThreshold;
+
             while (!cts.IsCancellationRequested)
             {
                 try
@@ -99,24 +107,25 @@ namespace Torque
                     for (int i = beginIndex; i < length - 3; i += 4)
                     {
                         validPackets++;
-                        var milliseconds = stopWatch.ElapsedMilliseconds;
+                        currentMilliseconds = stopWatch.ElapsedMilliseconds;
                         var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
-                        var torque = a * value + b;
+                        torque = a * value + b;
                         if (torque >= BeginThreshold)
                         {
-                            if (!recording && milliseconds - lastMilliseconds >= interval)
+                            if (!recording && currentMilliseconds - lastEndMilliseconds >= interval)
                             {
                                 recording = true;
+                                beginMilliseconds = currentMilliseconds;
                             }
                             if (recording)
                             {
                                 Results.Add(torque);
                             }
                         }
-                        else if (torque < EndThreshold && recording)
+                        if (recording && ShouldEnd())
                         {
                             recording = false;
-                            lastMilliseconds = milliseconds;
+                            lastEndMilliseconds = currentMilliseconds;
                             StopRecording?.Invoke(Results.ToArray());
                             Results.Clear();
                         }
