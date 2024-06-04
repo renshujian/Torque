@@ -84,15 +84,15 @@ namespace Torque
             });
         }
 
-        private void AddTest(double[] data)
+        private void AddTest(double[] rawData)
         {
-            // 只采集到1个点可以认为是噪音不做处理，简化后续判断
-            if (data.Length <= 1) return;
-
             string timestamp = $"{DateTime.Now:yyyyMMddHHmmss}";
-            File.WriteAllTextAsync(Path.Combine("results", $"{timestamp}.txt"), string.Join("\r\n", data));
+            File.WriteAllTextAsync(Path.Combine("results", $"{timestamp}.txt"), string.Join("\r\n", rawData));
+            if (rawData.Length <= TorqueService.Options.BeginSkip + TorqueService.Options.EndSkip) return;
+
             Dispatcher.InvokeAsync(() =>
             {
+                double[] data = rawData[TorqueService.Options.BeginSkip..^TorqueService.Options.EndSkip];
                 List<double> peaks = new();
                 var rising = true;
                 for (int i = 1; i < data.Length; i++)
