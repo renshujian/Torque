@@ -11,6 +11,7 @@ namespace Torque
         public double EndThreshold { get; init; } = 0.2;
         public int BeginSkip { get; init; }
         public int EndSkip { get; init; }
+        public TimeSpan Interval { get; init; } = TimeSpan.FromSeconds(0.3);
         public double? a { get; init; }
         public double b { get; init; }
         public double Sensitivity { get; init; } = 0.1144;

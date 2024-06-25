@@ -31,6 +31,7 @@ namespace Torque
             Options = options;
             a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
             b = options.b;
+            interval = (long)Options.Interval.TotalMilliseconds;
         }
 
         public Task Zero()

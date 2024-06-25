@@ -118,7 +118,7 @@ namespace Torque
                 {
                     "最大值" => peaks.Max(),
                     "第二大" => peaks.OrderByDescending(it => it).ElementAtOrDefault(1),
-                    "第一个" => peaks[0],
+                    "第一个" => data[0],
                     "第二个" => peaks.ElementAtOrDefault(1),
                     "最后一个" => peaks[^1],
                     _ => 0,
