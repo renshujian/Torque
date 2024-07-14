@@ -13,6 +13,7 @@ namespace Torque
         public StaticTorqueServiceOptions Options { get; set; }
         public double BeginThreshold { get; set; }
         public double EndThreshold { get; set; }
+        public TimeSpan EndTimeSpan { get; set; }
         // 初始容量存储1分钟5000hz数据
         public List<double> Results { get; } = new(60 * 5000);
         double a;
@@ -29,9 +30,6 @@ namespace Torque
         public StaticTorqueService(StaticTorqueServiceOptions options)
         {
             Options = options;
-            a = options.a ?? 15 * 1000 / options.Sensitivity / 248 / 65536;
-            b = options.b;
-            interval = (long)Options.Interval.TotalMilliseconds;
         }
 
         public Task Zero()
@@ -39,7 +37,7 @@ namespace Torque
             return Task.CompletedTask;
         }
 
-        public void StartRead()
+        public void StartRead(double targetValue)
         {
             if (socket is not null)
             {
@@ -48,6 +46,15 @@ namespace Torque
             socket = new(SocketType.Stream, ProtocolType.Tcp);
             socket.ReceiveTimeout = 3000;
             socket.Connect(Options.Host, Options.Port);
+
+            var parameter = Options.GetParameter(targetValue);
+            a = parameter.a ?? 15 * 1000 / parameter.Sensitivity / 248 / 65536;
+            b = parameter.b;
+            interval = (long)parameter.Interval.TotalMilliseconds;
+            BeginThreshold = parameter.BeginThreshold * targetValue;
+            EndThreshold = parameter.EndThreshold * targetValue;
+            EndTimeSpan = parameter.EndTimeSpan;
+
             cts = new();
             task = Task.Run(Read).ContinueWith(task =>
             {
@@ -80,8 +87,8 @@ namespace Torque
             long beginMilliseconds = 0;
             double torque = -1;
             var recording = false;
-            Func<bool> ShouldEnd = Options.EndTimeSpan > TimeSpan.Zero ? 
-                () => currentMilliseconds - beginMilliseconds >= Options.EndTimeSpan.TotalMilliseconds : 
+            Func<bool> ShouldEnd = EndTimeSpan > TimeSpan.Zero ? 
+                () => currentMilliseconds - beginMilliseconds >= EndTimeSpan.TotalMilliseconds : 
                 () => torque < EndThreshold;
 
             while (!cts.IsCancellationRequested)

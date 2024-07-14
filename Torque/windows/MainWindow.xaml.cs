@@ -55,9 +55,7 @@ namespace Torque
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            TorqueService.BeginThreshold = TorqueService.Options.BeginThreshold * Model.Tool!.SetTorque;
-            TorqueService.EndThreshold = TorqueService.Options.EndThreshold * Model.Tool!.SetTorque;
-            TorqueService.StartRead();
+            TorqueService.StartRead(Model.Tool!.SetTorque);
         }
 
         private void HandleError(Exception e)
@@ -88,11 +86,13 @@ namespace Torque
         {
             string timestamp = $"{DateTime.Now:yyyyMMddHHmmss}";
             File.WriteAllTextAsync(Path.Combine("results", $"{timestamp}.txt"), string.Join("\r\n", rawData));
-            if (rawData.Length <= TorqueService.Options.BeginSkip + TorqueService.Options.EndSkip) return;
+
+            var parameter = TorqueService.Options.GetParameter(Model.Tool.SetTorque);
+            if (rawData.Length <= parameter.BeginSkip + parameter.EndSkip) return;
 
             Dispatcher.InvokeAsync(() =>
             {
-                double[] data = rawData[TorqueService.Options.BeginSkip..^TorqueService.Options.EndSkip];
+                double[] data = rawData[parameter.BeginSkip..^parameter.EndSkip];
                 List<double> peaks = new();
                 var rising = true;
                 for (int i = 1; i < data.Length; i++)

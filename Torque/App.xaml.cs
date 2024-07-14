@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -64,7 +65,12 @@ namespace Torque
                 o.Password.RequireUppercase = false;
                 o.Lockout.AllowedForNewUsers = false;
             });
-            services.AddSingleton(config.GetSection(nameof(StaticTorqueServiceOptions)).Get<StaticTorqueServiceOptions>());
+            var staticTorqueServiceOptions = config.GetSection(nameof(StaticTorqueServiceOptions)).Get<StaticTorqueServiceOptions>();
+            foreach (var parameter in config.GetSection(nameof(staticTorqueServiceOptions.Parameters)).Get<List<StaticTorqueParameter>>())
+            {
+                staticTorqueServiceOptions.AddParameter(parameter);
+            }
+            services.AddSingleton(staticTorqueServiceOptions);
             services.AddSingleton<TorqueService, TorqueService>();
             services.AddSingleton<StaticTorqueService, StaticTorqueService>();
             var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>() ?? new();
