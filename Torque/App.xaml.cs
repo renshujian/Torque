@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Identity;
@@ -27,8 +28,11 @@ namespace Torque
             var root = ConfigureServices(config);
             var scope = root.CreateScope();
             var sp = scope.ServiceProvider;
-            sp.GetRequiredService<AppDbContext>().Database.Migrate();
+            var db = sp.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
+
             var login = sp.GetRequiredService<Login>();
+            login.usernameBox.Text = db.Users.OrderByDescending(it => it.LastLoginTime).First().UserName;
             var main = sp.GetRequiredService<MainWindow>();
             if (login.ShowDialog() == true)
             {

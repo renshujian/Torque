@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using Microsoft.AspNetCore.Identity;
 
 namespace Torque
@@ -15,7 +16,8 @@ namespace Torque
         {
             InitializeComponent();
             UserManager = userManager;
-            usernameBox.Focus();
+            // 自动填充上次登录的用户名，焦点放在密码框上
+            passwordBox.Focus();
         }
 
         async void Submit(object sender, RoutedEventArgs e)
@@ -24,6 +26,8 @@ namespace Torque
             var success = await UserManager.CheckPasswordAsync(user, passwordBox.Password);
             if (success)
             {
+                user.LastLoginTime = DateTime.Now;
+                await UserManager.UpdateAsync(user);
                 User = user;
                 DialogResult = true;
             } else

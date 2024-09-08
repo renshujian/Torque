@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System;
 
 namespace Torque
 {
@@ -7,5 +8,6 @@ namespace Torque
         public User(string userName) : base(userName) { }
         public bool IsInRole(string role) => role == UserName;
         public bool IsAdmin => IsInRole("管理员");
+        public DateTime LastLoginTime { get; set; }
     }
 }
