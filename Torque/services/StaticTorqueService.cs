@@ -8,98 +8,155 @@ using System.Threading.Tasks;
 
 namespace Torque
 {
-    public class StaticTorqueService
+    public class StaticTorqueService : IDisposable
     {
-        public StaticTorqueServiceOptions Options { get; set; }
-        public double BeginThreshold { get; set; }
-        public double EndThreshold { get; set; }
-        public TimeSpan EndTimeSpan { get; set; }
-        // 初始容量存储1分钟5000hz数据
-        public List<double> Results { get; } = new(60 * 5000);
-        double a;
-        double b;
-        long interval = 300;
-        Socket? socket;
-        CancellationTokenSource cts = new();
-        Task task = Task.CompletedTask;
+        #region 参数
+        public StaticTorqueServiceOptions Options { get; }
+        private double a;
+        private double b;
+        private long interval = 300;
+        private double _beginThreshold;
+        private double _endThreshold;
+        private TimeSpan _endTimeSpan;
+        #endregion
 
+        #region 信号
+        public bool Connected => _socket.Connected;
+        public double CurrentTorque => a * _sensorValue + b;
+        private double _sensorValue;
+        #endregion
+
+        #region 通讯
+        private Socket _socket = new(SocketType.Stream, ProtocolType.Tcp);
+        private CancellationTokenSource _cts = new();
+        private Task _task = Task.CompletedTask;
+        #endregion
+
+        #region 业务，待剥离
+        // 初始容量存储1分钟5000hz数据
+        private readonly List<double> _results = new(60 * 5000);
+        private Stopwatch _stopWatch = new();
+        private long lastEndMilliseconds;
+        private long beginMilliseconds;
+        private bool recording;
+        #endregion
+
+        #region 事件，待整理
         public event Action<double[]>? StopRecording;
         public event Action<Exception>? OnError;
         public event Func<SocketException, bool>? OnSocketException;
+        public event Action<double>? OnData;
+        #endregion
 
         public StaticTorqueService(StaticTorqueServiceOptions options)
         {
             Options = options;
         }
 
-        public Task Zero()
+        public void Connect()
         {
-            return Task.CompletedTask;
+            if (!Connected)
+            {
+                _socket = new(SocketType.Stream, ProtocolType.Tcp);
+                _socket.ReceiveTimeout = 3000;
+                _socket.Connect(Options.Host, Options.Port);
+            }
+            if (_task.IsCompleted)
+            {
+                _cts = new();
+                _task = Task.Factory.StartNew(Read, TaskCreationOptions.LongRunning).ContinueWith(task =>
+                {
+                    if (task.Exception is not null)
+                    {
+                        OnError?.Invoke(task.Exception);
+                    }
+                });
+                // 延时以保证有传感器读数
+                Thread.Sleep(500);
+            }
         }
 
-        public void StartRead(double targetValue)
+        public void Dispose()
         {
-            if (socket is not null)
-            {
-                throw new ApplicationException($"已有socket, connected: {socket.Connected}");
-            }
-            socket = new(SocketType.Stream, ProtocolType.Tcp);
-            socket.ReceiveTimeout = 3000;
-            socket.Connect(Options.Host, Options.Port);
+            _cts.Cancel();
+            _socket.Close(3);
+        }
 
+        public void PrepareParameter(double targetValue)
+        {
+            Connect();
             var parameter = Options.GetParameter(targetValue);
             a = parameter.a ?? 15 * 1000 / parameter.Sensitivity / 248 / 65536;
-            b = parameter.b;
+            b = parameter.b ?? -a * _sensorValue ;
             interval = (long)parameter.Interval.TotalMilliseconds;
-            BeginThreshold = parameter.BeginThreshold * targetValue;
-            EndThreshold = parameter.EndThreshold * targetValue;
-            EndTimeSpan = parameter.EndTimeSpan;
+            _beginThreshold = parameter.BeginThreshold * targetValue;
+            _endThreshold = parameter.EndThreshold * targetValue;
+            _endTimeSpan = parameter.EndTimeSpan;
+        }
 
-            cts = new();
-            task = Task.Run(Read).ContinueWith(task =>
+        public void StartTest()
+        {
+            Reset();
+            _stopWatch = Stopwatch.StartNew();
+            OnData += Test;
+        }
+
+        public void StopTest()
+        {
+            OnData -= Test;
+            _stopWatch.Stop();
+        }
+
+        private void Reset()
+        {
+            _results.Clear();
+            lastEndMilliseconds = -interval;
+            beginMilliseconds = 0;
+            recording = false;
+        }
+
+        private void Test(double sensorValue)
+        {
+            var currentMilliseconds = _stopWatch.ElapsedMilliseconds;
+            var torque = a * sensorValue + b;
+            if (torque >= _beginThreshold)
             {
-                socket.Close(3);
-                socket = null;
-                if (task.Exception is not null)
+                if (!recording && currentMilliseconds - lastEndMilliseconds >= interval)
                 {
-                    OnError?.Invoke(task.Exception);
+                    recording = true;
+                    beginMilliseconds = currentMilliseconds;
                 }
-            });
+                if (recording)
+                {
+                    _results.Add(torque);
+                }
+            }
+            if (recording)
+            {
+                bool shouldEnd = _endTimeSpan > TimeSpan.Zero ?
+                    currentMilliseconds - beginMilliseconds >= _endTimeSpan.TotalMilliseconds :
+                    torque < _endThreshold;
+                if (shouldEnd)
+                {
+                    recording = false;
+                    lastEndMilliseconds = currentMilliseconds;
+                    StopRecording?.Invoke(_results.ToArray());
+                    _results.Clear();
+                }
+            }
         }
 
-        public Task StopRead()
+        private void Read()
         {
-            if (task.IsCompleted) return task;
-            cts.Cancel();
-            cts.Dispose();
-            return task;
-        }
-
-        void Read()
-        {
-            Results.Clear();
-            var validPackets = 0;
             var buffer = new byte[256];
-
-            var stopWatch = Stopwatch.StartNew();
-            long currentMilliseconds = 0;
-            long lastEndMilliseconds = -interval;
-            long beginMilliseconds = 0;
-            double torque = -1;
-            var recording = false;
-            Func<bool> ShouldEnd = EndTimeSpan > TimeSpan.Zero ? 
-                () => currentMilliseconds - beginMilliseconds >= EndTimeSpan.TotalMilliseconds : 
-                () => torque < EndThreshold;
-
-            while (!cts.IsCancellationRequested)
+            while (!_cts.IsCancellationRequested)
             {
                 try
                 {
-                    var length = socket!.Receive(buffer);
+                    var length = _socket.Receive(buffer);
                     if (length < 1)
                     {
-                        stopWatch.Stop();
-                        throw new ApplicationException("socket连接异常");
+                        throw new SocketException();
                     }
                     // [byte1,byte2,0x0d,0x0a]为一个有效数据，先找到第一个有效数据
                     var beginIndex = length - 3;
@@ -114,29 +171,8 @@ namespace Torque
                     // 按照4字节一组处理数据
                     for (int i = beginIndex; i < length - 3; i += 4)
                     {
-                        validPackets++;
-                        currentMilliseconds = stopWatch.ElapsedMilliseconds;
-                        var value = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
-                        torque = a * value + b;
-                        if (torque >= BeginThreshold)
-                        {
-                            if (!recording && currentMilliseconds - lastEndMilliseconds >= interval)
-                            {
-                                recording = true;
-                                beginMilliseconds = currentMilliseconds;
-                            }
-                            if (recording)
-                            {
-                                Results.Add(torque);
-                            }
-                        }
-                        if (recording && ShouldEnd())
-                        {
-                            recording = false;
-                            lastEndMilliseconds = currentMilliseconds;
-                            StopRecording?.Invoke(Results.ToArray());
-                            Results.Clear();
-                        }
+                        _sensorValue = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
+                        OnData?.Invoke(_sensorValue);
                     }
                 }
                 catch (SocketException e)
@@ -144,16 +180,11 @@ namespace Torque
                     // FIXME: 和窗口交互代码太乱，以及如果再抛错如何处理？
                     if (OnSocketException?.Invoke(e) == true)
                     {
-                        socket = new(SocketType.Stream, ProtocolType.Tcp);
-                        socket.ReceiveTimeout = 3000;
-                        socket.Connect(Options.Host, Options.Port);
+                        _socket = new(SocketType.Stream, ProtocolType.Tcp);
+                        _socket.ReceiveTimeout = 3000;
+                        _socket.Connect(Options.Host, Options.Port);
                     }
                 }
-            }
-            stopWatch.Stop();
-            if (validPackets == 0)
-            {
-                throw new ApplicationException("没有收到有效数据");
             }
         }
     }

@@ -17,6 +17,8 @@ namespace Torque
     /// </summary>
     public partial class App : Application
     {
+        private ServiceProvider? sp;
+
         void ShowException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             MessageBox.Show(e.Exception.Message, e.Exception.GetType().FullName, MessageBoxButton.OK, MessageBoxImage.Error);
@@ -25,9 +27,7 @@ namespace Torque
         void AppStartup(object sender, StartupEventArgs e)
         {
             var config = new ConfigurationBuilder().AddIniFile("config.ini").Build();
-            var root = ConfigureServices(config);
-            var scope = root.CreateScope();
-            var sp = scope.ServiceProvider;
+            sp = ConfigureServices(config);
             var db = sp.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
 
@@ -55,6 +55,11 @@ namespace Torque
             }
         }
 
+        private void AppExit(object sender, ExitEventArgs e)
+        {
+            sp?.Dispose();
+        }
+
         static ServiceProvider ConfigureServices(IConfiguration config)
         {
             ServiceCollection services = new();
@@ -75,7 +80,6 @@ namespace Torque
                 staticTorqueServiceOptions.AddParameter(parameter);
             }
             services.AddSingleton(staticTorqueServiceOptions);
-            services.AddSingleton<TorqueService, TorqueService>();
             services.AddSingleton<StaticTorqueService, StaticTorqueService>();
             var mesServiceOptions = config.GetSection(nameof(MesServiceOptions)).Get<MesServiceOptions>() ?? new();
             var mesDbContextOptionsBuilder = new DbContextOptionsBuilder<MesDbContext>().UseOracle(config.GetConnectionString("MES"), o => o.UseOracleSQLCompatibility("11"));

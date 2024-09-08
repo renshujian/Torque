@@ -29,6 +29,17 @@ namespace Torque
             }
         }
 
+        private bool _canTest;
+        public bool CanTest
+        {
+            get => _canTest;
+            set
+            {
+                _canTest = value;
+                OnPropertyChanged();
+            }
+        }
+
         public double AllowedDiviation { get; set; } = 0.2;
 
         string peakIndex = "最大值";

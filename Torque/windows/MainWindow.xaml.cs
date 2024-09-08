@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
@@ -19,6 +20,7 @@ namespace Torque
         IMesService MesService { get; }
         AppDbContext AppDbContext { get; }
         IServiceProvider sp;
+        DispatcherTimer _timer = new();
 
         public MainWindow(StaticTorqueService torqueService, IMesService mesService, AppDbContext appDbContext, IServiceProvider serviceProvider)
         {
@@ -40,14 +42,13 @@ namespace Torque
             Directory.CreateDirectory("results");
         }
 
-        private async void ResetTorque(object sender, RoutedEventArgs e)
+        private void ResetTorque(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("要标定扭矩传感器零点并清除当前数据吗？", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (Model.Tool is not null)
             {
-                ZeroButton.IsEnabled = false;
-                await TorqueService.Zero();
+                TorqueService.PrepareParameter(Model.Tool.SetTorque);
                 Model.ClearTests();
-                ZeroButton.IsEnabled = true;
+                Model.CanTest = true;
             }
         }
 
@@ -55,7 +56,7 @@ namespace Torque
         {
             StopButton.Visibility = Visibility.Visible;
             ZeroButton.IsEnabled = false;
-            TorqueService.StartRead(Model.Tool!.SetTorque);
+            TorqueService.StartTest();
         }
 
         private void HandleError(Exception e)
@@ -156,11 +157,9 @@ namespace Torque
             });
         }
 
-        private async void StopButton_Click(object sender, RoutedEventArgs e)
+        private void StopButton_Click(object sender, RoutedEventArgs e)
         {
-            StopButton.IsEnabled = false;
-            await TorqueService.StopRead();
-            StopButton.IsEnabled = true;
+            TorqueService.StopTest();
             StopButton.Visibility = Visibility.Hidden;
             ZeroButton.IsEnabled = true;
         }
@@ -200,6 +199,7 @@ namespace Torque
                 {
                     Model.Tool = new() { Id = dialog.id.Text, SetTorque = setTorque };
                     Model.ClearTests();
+                    Model.CanTest = false;
                 }
                 else
                 {
@@ -222,6 +222,7 @@ namespace Torque
                 {
                     Model.Tool = tool;
                     Model.ClearTests();
+                    Model.CanTest = false;
                 }
             }
         }
@@ -253,6 +254,30 @@ namespace Torque
             {
                 Model.PeakIndex = s;
             }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            _timer.Interval = TimeSpan.FromMilliseconds(100);
+            _timer.Tick += Timer_Tick;
+            _timer.Start();
+        }
+
+        private void Timer_Tick(object? sender, EventArgs e)
+        {
+            if (TorqueService.Connected)
+            {
+                CurrentTorque.Content = TorqueService.CurrentTorque;
+            }
+            else
+            {
+                CurrentTorque.Content = null;
+            }
+        }
+
+        private void Window_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _timer.Stop();
         }
     }
 }
