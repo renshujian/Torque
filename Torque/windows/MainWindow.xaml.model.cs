@@ -41,6 +41,7 @@ namespace Torque
         }
 
         public double AllowedDiviation { get; set; } = 0.2;
+        public double TODO1 { get; set; } = 200;
 
         string peakIndex = "最大值";
         public string PeakIndex

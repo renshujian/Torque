@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Torque
 {
@@ -40,6 +42,7 @@ namespace Torque
                 torqueService.OnSocketException -= HandleSocketException;
             };
             Directory.CreateDirectory("results");
+            Directory.CreateDirectory("reports");
         }
 
         private void ResetTorque(object sender, RoutedEventArgs e)
@@ -91,7 +94,7 @@ namespace Torque
             var parameter = TorqueService.Options.GetParameter(Model.Tool.SetTorque);
             if (rawData.Length <= parameter.BeginSkip + parameter.EndSkip) return;
 
-            Dispatcher.InvokeAsync(() =>
+            Dispatcher.BeginInvoke(() =>
             {
                 double[] data = rawData[parameter.BeginSkip..^parameter.EndSkip];
                 List<double> peaks = new();
@@ -144,15 +147,9 @@ namespace Torque
                         Model.ClearTests();
                     }
                 }
-                else if (Model.Tests.Count >= 12 && Model.TestsAreOK)
+                if (Model.Tests.Count >= TorqueService.Options.SaveCount)
                 {
-                    if (MessageBox.Show(this, "校准完成，是否上传数据", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        AppDbContext.Tests.AddRange(Model.Tests);
-                        AppDbContext.SaveChanges();
-                        MesService.Upload(Model.Tests);
-                        Model.ClearTests();
-                    }
+                    SaveCsv(Model.Tests, Path.Combine("reports", $"{Model.Tool?.Id}_{DateTime.Now:yyyyMMddHHmmss}.csv"));
                 }
             });
         }
@@ -238,15 +235,6 @@ namespace Torque
             }
         }
 
-        private void AllowedDiviationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var content = ((ComboBoxItem)e.AddedItems[0]!).Content;
-            if (content is string s && double.TryParse(s.TrimEnd('%'), out var allowedDiviation))
-            {
-                Model.AllowedDiviation = allowedDiviation / 100;
-            }
-        }
-
         private void PeakIndexComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var content = ((ComboBoxItem)e.AddedItems[0]!).Content;
@@ -278,6 +266,30 @@ namespace Torque
         private void Window_Unloaded(object sender, RoutedEventArgs e)
         {
             _timer.Stop();
+        }
+
+        private void SaveCsv(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                FileName = $"{Model.Tool?.Id}_{DateTime.Now:yyyyMMddHHmmss}",
+                DefaultExt = "csv",
+                Filter = "CSV|*.csv",
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                SaveCsv(Model.Tests, dialog.FileName);
+            }
+        }
+
+        private void SaveCsv(IEnumerable<Test> tests, string fileName)
+        {
+            using var writer = new StreamWriter(fileName, false, Encoding.Unicode);
+            writer.WriteLine("日期\t时间\t实测扭矩值\t目标扭矩值\t是否合格");
+            foreach (var test in tests)
+            {
+                writer.WriteLine($"{test.TestTime.ToShortDateString()}\t{test.TestTime.ToLongTimeString()}\t{test.RealTorque}\t{test.SetTorque}\t{(test.IsOK ? "PASS" : "NG")}");
+            }
         }
     }
 }

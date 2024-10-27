@@ -7,6 +7,7 @@ namespace Torque
     {
         public string Host { get; init; } = "127.0.0.1";
         public int Port { get; init; } = 502;
+        public int SaveCount { get; init; } = 12;
 
         private List<StaticTorqueParameter> _parameters = new();
         public IReadOnlyList<StaticTorqueParameter> Parameters => _parameters;

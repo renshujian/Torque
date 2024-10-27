@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Loaded="Window_Loaded"
         Unloaded="Window_Unloaded"
-        Title="紧固工具校准" Height="500" Width="1000">
+        Title="紧固工具校准" Height="600" Width="1000">
     <Window.Resources>
         <local:ObjectBoolConverter x:Key="ObjectBoolConverter"/>
         <local:BoolColorConverter x:Key="BoolColorConverter"/>
@@ -66,6 +66,7 @@
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.ColumnSpan="2" Click="ScanTool">工具信息</Button>
@@ -76,27 +77,25 @@
             <Label Grid.Row="2">目标扭矩</Label>
             <Label Grid.Row="2" Grid.Column="1" Content="{Binding Tool.SetTorque}" ContentStringFormat="{}{0}kgf*cm"/>
             <Label Grid.Row="3">允许偏倚</Label>
-            <ComboBox Grid.Row="3" Grid.Column="1" Name="AllowedDiviationComboBox" SelectionChanged="AllowedDiviationComboBox_SelectionChanged">
-                <ComboBoxItem>5%</ComboBoxItem>
-                <ComboBoxItem>10%</ComboBoxItem>
-                <ComboBoxItem IsSelected="True">20%</ComboBoxItem>
-            </ComboBox>
-            <Label Grid.Row="4">峰值索引</Label>
-            <ComboBox Grid.Row="4" Grid.Column="1" SelectionChanged="PeakIndexComboBox_SelectionChanged">
+            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding AllowedDiviation}"/>
+            <Label Grid.Row="4">点检转速</Label>
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding TODO1}"/>
+            <Label Grid.Row="5">峰值索引</Label>
+            <ComboBox Grid.Row="5" Grid.Column="1" SelectionChanged="PeakIndexComboBox_SelectionChanged">
                 <ComboBoxItem IsSelected="True">最大值</ComboBoxItem>
                 <ComboBoxItem>第二大</ComboBoxItem>
                 <ComboBoxItem>第一个</ComboBoxItem>
                 <ComboBoxItem>第二个</ComboBoxItem>
                 <ComboBoxItem>最后一个</ComboBoxItem>
             </ComboBox>
-            <Button Name="ZeroButton" Grid.Row="5" Click="ResetTorque" IsEnabled="{Binding Tool,Converter={StaticResource ObjectBoolConverter}}">零点</Button>
-            <Button Grid.Row="5" Grid.Column="1" Click="ReadTorque" IsEnabled="{Binding CanTest}">开始测量</Button>
-            <Button Name="StopButton" Grid.Row="5" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
-            <Button Grid.Row="6" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
-            <Button Grid.Row="6" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
-            <Label Grid.Row="7" Background="White">当前扭矩</Label>
-            <Label Grid.Row="7" Grid.Column="1" Background="White" Name="CurrentTorque" />
-            <Label Grid.Row="8" Grid.ColumnSpan="2" FontSize="100">
+            <Button Name="ZeroButton" Grid.Row="6" Click="ResetTorque" IsEnabled="{Binding Tool,Converter={StaticResource ObjectBoolConverter}}">零点</Button>
+            <Button Grid.Row="6" Grid.Column="1" Click="ReadTorque" IsEnabled="{Binding CanTest}">开始测量</Button>
+            <Button Name="StopButton" Grid.Row="6" Grid.Column="1" Visibility="Hidden" Click="StopButton_Click">停止测量</Button>
+            <Button Grid.Row="7" VerticalAlignment="Top" Click="ClearTests">清除数据</Button>
+            <Button Grid.Row="7" Grid.Column="1" VerticalAlignment="Top" Click="UploadTests" IsEnabled="{Binding TestsAreOK}">上传数据</Button>
+            <Label Grid.Row="8" Background="White">当前扭矩</Label>
+            <Label Grid.Row="8" Grid.Column="1" Background="White" Name="CurrentTorque" />
+            <Label Grid.Row="9" Grid.ColumnSpan="2" FontSize="100">
                 <Label.Background>
                     <Binding Path="LastTest.IsOK" Converter="{StaticResource BoolColorConverter}"/>
                 </Label.Background>
@@ -104,6 +103,11 @@
             </Label>
         </Grid>
         <ListView ItemsSource="{Binding Tests}" Margin="5">
+            <ListView.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="保存为CSV" Click="SaveCsv" />
+                </ContextMenu>
+            </ListView.ContextMenu>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="序号" Width="30">
