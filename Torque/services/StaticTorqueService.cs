@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,8 +23,10 @@ namespace Torque
 
         #region 信号
         public bool Connected => _socket.Connected;
-        public double CurrentTorque => a * _sensorValue + b;
-        private double _sensorValue;
+        public double CurrentTorque => a * SensorValue + b;
+        private readonly double[] _sensorValues;
+        private int _sensorValueIndex;
+        private double SensorValue => _sensorValues[_sensorValueIndex];
         #endregion
 
         #region 通讯
@@ -51,6 +54,11 @@ namespace Torque
         public StaticTorqueService(StaticTorqueServiceOptions options)
         {
             Options = options;
+            if (options.SensorDataCount < 1 || options.SensorDataCount > 500)
+            {
+                throw new ArgumentException("SensorDataCount有效范围为[1,500]");
+            }
+            _sensorValues = new double[options.SensorDataCount];
         }
 
         public void Connect()
@@ -87,7 +95,7 @@ namespace Torque
             Connect();
             var parameter = Options.GetParameter(targetValue);
             a = parameter.a ?? 15 * 1000 / parameter.Sensitivity / 248 / 65536;
-            b = parameter.b ?? -a * _sensorValue ;
+            b = parameter.b ?? -a * _sensorValues.Average();
             interval = (long)parameter.Interval.TotalMilliseconds;
             _beginThreshold = parameter.BeginThreshold * targetValue;
             _endThreshold = parameter.EndThreshold * targetValue;
@@ -171,8 +179,11 @@ namespace Torque
                     // 按照4字节一组处理数据
                     for (int i = beginIndex; i < length - 3; i += 4)
                     {
-                        _sensorValue = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
-                        OnData?.Invoke(_sensorValue);
+                        // 必须先写数据再修改索引，才能保证另一个线程不会读到最旧的数据
+                        int writeIndex = _sensorValueIndex == _sensorValues.Length - 1 ? 0 : _sensorValueIndex + 1;
+                        _sensorValues[writeIndex] = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(i, 2));
+                        _sensorValueIndex = writeIndex;
+                        OnData?.Invoke(SensorValue);
                     }
                 }
                 catch (SocketException e)
